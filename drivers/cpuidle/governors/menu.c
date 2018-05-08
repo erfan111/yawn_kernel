@@ -304,6 +304,8 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 
 	get_iowait_load(&nr_iowaiters, &cpu_load);
+	// =e
+	printk_ratelimit("load.weigth = %ul \n", cpu_load);
 	data->bucket = which_bucket(data->next_timer_us, nr_iowaiters);
 
 	/*

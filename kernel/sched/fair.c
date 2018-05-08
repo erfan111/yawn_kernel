@@ -7303,6 +7303,7 @@ static int idle_balance(struct rq *this_rq)
 	int pulled_task = 0;
 	u64 curr_cost = 0;
 
+	// =e This function does nothing at all
 	idle_enter_fair(this_rq);
 
 	/*
@@ -7311,6 +7312,7 @@ static int idle_balance(struct rq *this_rq)
 	 */
 	this_rq->idle_stamp = rq_clock(this_rq);
 
+	// =e if the degree of the idleness doesn't worth the migration cost go to out, and set the next balancing time
 	if (this_rq->avg_idle < sysctl_sched_migration_cost ||
 	    !this_rq->rd->overload) {
 		rcu_read_lock();
@@ -7330,14 +7332,17 @@ static int idle_balance(struct rq *this_rq)
 		int continue_balancing = 1;
 		u64 t0, domain_cost;
 
+		// =e this domain dosn't support load balance
 		if (!(sd->flags & SD_LOAD_BALANCE))
 			continue;
 
+		// =e check the cost again for this domain this time
 		if (this_rq->avg_idle < curr_cost + sd->max_newidle_lb_cost) {
 			update_next_balance(sd, 0, &next_balance);
 			break;
 		}
 
+		// =e DO the load balance
 		if (sd->flags & SD_BALANCE_NEWIDLE) {
 			t0 = sched_clock_cpu(this_cpu);
 
@@ -7349,6 +7354,7 @@ static int idle_balance(struct rq *this_rq)
 			if (domain_cost > sd->max_newidle_lb_cost)
 				sd->max_newidle_lb_cost = domain_cost;
 
+			// =e add the domain's cost to the total cost
 			curr_cost += domain_cost;
 		}
 
