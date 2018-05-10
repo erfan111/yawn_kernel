@@ -305,7 +305,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 
 	get_iowait_load(&nr_iowaiters, &cpu_load);
 	// =e
-	printk("load.weight = %ul \n", cpu_load);
+	printk_ratelimit("load.weight = %lu, io_waiters = %lu \n", cpu_load, nr_iowaiters);
 	data->bucket = which_bucket(data->next_timer_us, nr_iowaiters);
 
 	/*
