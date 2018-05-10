@@ -15,6 +15,7 @@
 #include <linux/sched.h>
 #include <linux/math64.h>
 #include <linux/module.h>
+#include <linux/random.h>
 
 struct erfan_device {
 	int		last_state_idx;
@@ -44,11 +45,11 @@ static DEFINE_PER_CPU(struct erfan_device, erfan_devices);
  */
 static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
-	struct menu_device *data = this_cpu_ptr(&erfan_devices);
+	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 	int latency_req = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
-	int j, lessthan100;
+	int i, j, lessthan100;
 	get_random_bytes(&j, sizeof(j));
-	lessthan100 = i % drv->state_count;
+	lessthan100 = j % drv->state_count;
 	lessthan100++;
 	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
 			struct cpuidle_state *s = &drv->states[i];
@@ -68,7 +69,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 }
 
 /**
- * menu_reflect - records that data structures need update
+ * erfan_reflect - records that data structures need update
  * @dev: the CPU
  * @index: the index of actual entered state
  *
@@ -77,7 +78,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
  */
 static void erfan_reflect(struct cpuidle_device *dev, int index)
 {
-	struct menu_device *data = this_cpu_ptr(&erfan_devices);
+	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 
 	data->last_state_idx = index;
 	data->needs_update = 1;
@@ -104,7 +105,7 @@ static int erfan_enable_device(struct cpuidle_driver *drv,
 	struct erfan_device *data = &per_cpu(erfan_devices, dev->cpu);
 	int i;
 
-	memset(data, 0, sizeof(struct menu_device));
+	memset(data, 0, sizeof(struct erfan_device));
 
 	return 0;
 }
