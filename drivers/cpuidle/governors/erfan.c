@@ -46,11 +46,12 @@ static DEFINE_PER_CPU(struct erfan_device, erfan_devices);
 static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
-	int latency_req = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
+	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	int i, j, lessthan100;
 	get_random_bytes(&j, sizeof(j));
 	lessthan100 = j % drv->state_count;
 	lessthan100++;
+	printk_ratelimited("qos = %d\n", throughput_req);
 	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
 			struct cpuidle_state *s = &drv->states[i];
 			struct cpuidle_state_usage *su = &dev->states_usage[i];
