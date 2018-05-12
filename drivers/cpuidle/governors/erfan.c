@@ -47,24 +47,33 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
-	int i, j, lessthan100;
-	get_random_bytes(&j, sizeof(j));
-	lessthan100 = j % drv->state_count;
-	lessthan100++;
-	printk_ratelimited("qos = %d\n", throughput_req);
-	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
-			struct cpuidle_state *s = &drv->states[i];
-			struct cpuidle_state_usage *su = &dev->states_usage[i];
-
-			if (s->disabled || su->disable)
-				continue;
-			if (i == lessthan100){
-				data->last_state_idx = i;
-				break;
-			}
-
-			data->last_state_idx = i;
-	}
+	int i, j, rate_step;
+//	get_random_bytes(&j, sizeof(j));
+//	lessthan100 = j % drv->state_count;
+//	lessthan100++;
+//	printk_ratelimited("qos = %d\n", throughput_req);
+//
+//	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
+//			struct cpuidle_state *s = &drv->states[i];
+//			struct cpuidle_state_usage *su = &dev->states_usage[i];
+//
+//			if (s->disabled || su->disable)
+//				continue;
+//			if (i == lessthan100){
+//				data->last_state_idx = i;
+//				break;
+//			}
+//
+//			data->last_state_idx = i;
+//	}
+	if(!throughput_req)
+		data->last_state_idx = 4;
+	else if(throughput_req < 10000)
+		data->last_state_idx = 2;
+	else if(throughput_req < 50000)
+		data->last_state_idx = 1;
+	else
+		data->last_state_idx = 0;
 
 	return data->last_state_idx;
 }
