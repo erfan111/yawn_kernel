@@ -28,7 +28,7 @@ struct erfan_device {
 	struct hrtimer hr_timer;
 };
 
-#define US_TO_NS(x)	(x * 1E3L)
+#define US_TO_NS(x)	(x << 10)
 
 
 //static inline int get_loadavg(unsigned long load)
@@ -78,7 +78,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->last_state_idx = 4;
 		goto out;
 	}
-	next_request = 1e6l / throughput_req;
+	next_request = div_u64(1000000, throughput_req);
 	if(next_request > 200)
 	{
 		data->last_state_idx = 4;
