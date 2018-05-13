@@ -20,13 +20,15 @@
 struct erfan_device {
 	int		last_state_idx;
 	int             needs_update;
-
 	unsigned int	next_timer_us;
 	unsigned int	predicted_us;
 	unsigned int	bucket;
 	int		interval_ptr;
+	// =e
+	struct hrtimer hr_timer;
 };
 
+#define US_TO_NS(x)	(x * 1E3L)
 
 
 //static inline int get_loadavg(unsigned long load)
@@ -36,7 +38,10 @@ struct erfan_device {
 
 static DEFINE_PER_CPU(struct erfan_device, erfan_devices);
 
-
+enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
+{
+  return HRTIMER_NORESTART;
+}
 
 /**
  * erfan_select - selects the next idle state to enter
@@ -47,7 +52,9 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
-	int i, j, rate_step;
+	int i, j, next_request;
+	ktime_t ktime;
+	unsigned long delay_in_us;
 //	get_random_bytes(&j, sizeof(j));
 //	lessthan100 = j % drv->state_count;
 //	lessthan100++;
@@ -67,14 +74,36 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 //			data->last_state_idx = i;
 //	}
 	if(!throughput_req)
+	{
 		data->last_state_idx = 4;
-	else if(throughput_req < 10000)
-		data->last_state_idx = 2;
-	else if(throughput_req < 50000)
-		data->last_state_idx = 1;
+		goto out;
+	}
+	next_request = 1e6l / throughput_req;
+	if(next_request > 200)
+	{
+		data->last_state_idx = 4;
+		delay_in_us = next_request - 150;
+	}
+	else if(next_request > 100)
+	{
+		data->last_state_idx = 3;
+		delay_in_us = next_request - 40;
+	}
+	else if(next_request > 40)
+	{
+		data->last_state_idx = 3;
+		delay_in_us = next_request - 10;
+	}
 	else
+	{
 		data->last_state_idx = 0;
+		goto out;
+	}
+	ktime = ktime_set( 0, delay_in_us );
+	printk_retalimited( "Starting timer to fire in %ldus cstate: %d\n", delay_in_us, data->last_state_idx );
 
+	hrtimer_start( &data->hr_timer, US_TO_NS(ktime), HRTIMER_MODE_REL );
+out:
 	return data->last_state_idx;
 }
 
@@ -116,7 +145,8 @@ static int erfan_enable_device(struct cpuidle_driver *drv,
 	int i;
 
 	memset(data, 0, sizeof(struct erfan_device));
-
+	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+	data->hr_timer.function = &my_hrtimer_callback;
 	return 0;
 }
 
