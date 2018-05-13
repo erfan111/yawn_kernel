@@ -100,7 +100,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		goto out;
 	}
 	ktime = ktime_set( 0, delay_in_us );
-	printk_retalimited( "Starting timer to fire in %ldus cstate: %d\n", delay_in_us, data->last_state_idx );
+	printk_ratelimited( "Starting timer to fire in %ldus cstate: %d\n", delay_in_us, data->last_state_idx );
 
 	hrtimer_start( &data->hr_timer, US_TO_NS(ktime), HRTIMER_MODE_REL );
 out:
