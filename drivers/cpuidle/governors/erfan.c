@@ -19,6 +19,7 @@
 
 struct erfan_device {
 	int		last_state_idx;
+	unsigned long	index;
 	unsigned long	before_jiffies;
 	unsigned long	after_jiffies;
 	unsigned long	reflection;
@@ -33,7 +34,7 @@ enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
 	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 	data->after_jiffies = jiffies;
-	printk_ratelimited("timer expired: before: %lu  after: %lu", data->before_jiffies, data->after_jiffies);
+	printk_ratelimited("timer expired: before: %lu  after: %lu index(%lu)\n", data->before_jiffies, data->after_jiffies, data->index);
 	return HRTIMER_NORESTART;
 }
 
@@ -94,7 +95,8 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		goto out;
 	}
 	ktime = ktime_set( 0, US_TO_NS(delay_in_us));
-	printk_ratelimited( "Starting timer to fire in %ldus cstate: %d\n", delay_in_us, data->last_state_idx );
+	data->index++;
+	printk_ratelimited( "Starting timer to fire in %ldus cstate: %d index(%lu)\n", delay_in_us, data->last_state_idx, data->index );
 
 	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
 out:
