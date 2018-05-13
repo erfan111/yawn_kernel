@@ -19,28 +19,22 @@
 
 struct erfan_device {
 	int		last_state_idx;
-	int             needs_update;
-	unsigned int	next_timer_us;
-	unsigned int	predicted_us;
-	unsigned int	bucket;
-	int		interval_ptr;
-	// =e
+	unsigned long	before_jiffies;
+	unsigned long	after_jiffies;
+	unsigned long	reflection;
 	struct hrtimer hr_timer;
 };
 
 #define US_TO_NS(x)	(x << 10)
 
-
-//static inline int get_loadavg(unsigned long load)
-//{
-//	return LOAD_INT(load) * 10 + LOAD_FRAC(load) / 10;
-//}
-
 static DEFINE_PER_CPU(struct erfan_device, erfan_devices);
 
 enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
-  return HRTIMER_NORESTART;
+	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
+	data->after_jiffies = jiffies;
+	printk_ratelimited("timer expired: before: %lu  after: %lu", data->before_jiffies, data->after_jiffies);
+	return HRTIMER_NORESTART;
 }
 
 /**
@@ -91,7 +85,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	}
 	else if(next_request > 40)
 	{
-		data->last_state_idx = 3;
+		data->last_state_idx = 2;
 		delay_in_us = next_request - 10;
 	}
 	else
@@ -120,7 +114,7 @@ static void erfan_reflect(struct cpuidle_device *dev, int index)
 	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 
 	data->last_state_idx = index;
-	data->needs_update = 1;
+	data->reflection = jiffies;
 }
 
 /**
@@ -146,6 +140,7 @@ static int erfan_enable_device(struct cpuidle_driver *drv,
 
 	memset(data, 0, sizeof(struct erfan_device));
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+	data->before_jiffies = jiffies;
 	data->hr_timer.function = &my_hrtimer_callback;
 	return 0;
 }
