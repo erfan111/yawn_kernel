@@ -24,7 +24,10 @@ struct erfan_device {
 	unsigned long	after_jiffies;
 	unsigned long	reflection;
 	struct hrtimer hr_timer;
+	int timer_active;
 };
+
+int counter = 0;
 
 #define US_TO_NS(x)	(x << 10)
 
@@ -34,7 +37,7 @@ enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
 	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 	data->after_jiffies = jiffies;
-	printk_ratelimited("timer expired: before: %lu  after: %lu index(%lu)\n", data->before_jiffies, data->after_jiffies, data->index);
+	printk_ratelimited("timer expired: before: %lu  after: %lu (%lu)\n", data->before_jiffies, data->after_jiffies, data->index);
 	return HRTIMER_NORESTART;
 }
 
@@ -68,6 +71,11 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 //
 //			data->last_state_idx = i;
 //	}
+	if(data->timer_active)
+	{
+		hrtimer_cancel(&data->hr_timer);
+		data->timer_active = 0;
+	}
 	if(!throughput_req)
 	{
 		data->last_state_idx = 4;
@@ -96,9 +104,11 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	}
 	ktime = ktime_set( 0, US_TO_NS(delay_in_us));
 	data->index++;
-	printk_ratelimited( "Starting timer to fire in %ldus cstate: %d index(%lu)\n", delay_in_us, data->last_state_idx, data->index );
+//	if(!(counter%10000) || )
+	printk_ratelimited( "Starting timer to fire in %ldus cstate: %d (%lu)\n", delay_in_us, data->last_state_idx, data->index);
 
 	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+	data->timer_active = 1;
 out:
 	return data->last_state_idx;
 }
