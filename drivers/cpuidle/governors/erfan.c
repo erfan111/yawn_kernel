@@ -118,7 +118,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->timer_active = 1;
 out:
 	if(!(data->index % 5000))
-		printk("cpu %d  index %lu  unmature wakeups: %lu, was on high cstate: %lu");
+		printk("cpu %d  index %lu  unmature wakeups: %lu, was on high cstate: %lu", dev->cpu, data->index, data->event_wake, data->was_on_high_cstate);
 	return data->last_state_idx;
 }
 
