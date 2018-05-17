@@ -20,6 +20,9 @@
 struct erfan_device {
 	int		last_state_idx;
 	unsigned long	index;
+	unsigned long timer_wake;
+	unsigned long event_wake;
+	unsigned long was_on_high_cstate;
 	struct hrtimer hr_timer;
 	int timer_active;
 };
@@ -32,7 +35,8 @@ static DEFINE_PER_CPU(struct erfan_device, erfan_devices);
 
 enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
-	//struct erfan_device *data = this_cpu_ptr(&erfan_devices);
+	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
+	data->timer_active = 0;
 	//printk_ratelimited("timer expired: before: %lu  after: %lu (%lu)\n", data->before_jiffies, data->after_jiffies, data->index);
 	return HRTIMER_NORESTART;
 }
@@ -67,10 +71,12 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 //
 //			data->last_state_idx = i;
 //	}
+	data->index++;
 	if(data->timer_active)
 	{
 		hrtimer_cancel(&data->hr_timer);
 		data->timer_active = 0;
+		data->event_wake++;
 	}
 	if(!throughput_req)
 	{
@@ -81,6 +87,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(data->last_state_idx > 2)
 	{
 		data->last_state_idx = 0;
+		data->was_on_high_cstate++;
 		goto out;
 	}
 	next_request = div_u64(1000000, throughput_req);
@@ -110,6 +117,8 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
 	data->timer_active = 1;
 out:
+	//if(!(data->index % 5000))
+		//printk("cpu %d  index %lu  unmature wakeups: %lu, was on high cstate: %lu");
 	return data->last_state_idx;
 }
 
