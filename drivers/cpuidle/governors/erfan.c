@@ -20,9 +20,6 @@
 struct erfan_device {
 	int		last_state_idx;
 	unsigned long	index;
-	unsigned long	before_jiffies;
-	unsigned long	after_jiffies;
-	unsigned long	reflection;
 	struct hrtimer hr_timer;
 	int timer_active;
 };
@@ -35,9 +32,8 @@ static DEFINE_PER_CPU(struct erfan_device, erfan_devices);
 
 enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
-	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
-	data->after_jiffies = jiffies;
-	printk_ratelimited("timer expired: before: %lu  after: %lu (%lu)\n", data->before_jiffies, data->after_jiffies, data->index);
+	//struct erfan_device *data = this_cpu_ptr(&erfan_devices);
+	//printk_ratelimited("timer expired: before: %lu  after: %lu (%lu)\n", data->before_jiffies, data->after_jiffies, data->index);
 	return HRTIMER_NORESTART;
 }
 
@@ -78,7 +74,13 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	}
 	if(!throughput_req)
 	{
+		// TODO: Decide here
 		data->last_state_idx = 4;
+		goto out;
+	}
+	if(data->last_state_idx > 2)
+	{
+		data->last_state_idx = 0;
 		goto out;
 	}
 	next_request = div_u64(1000000, throughput_req);
@@ -103,9 +105,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		goto out;
 	}
 	ktime = ktime_set( 0, US_TO_NS(delay_in_us));
-	data->index++;
-//	if(!(counter%10000) || )
-	printk_ratelimited( "Starting timer to fire in %ldus cstate: %d (%lu)\n", delay_in_us, data->last_state_idx, data->index);
+	//printk_ratelimited( "Starting timer to fire in %ldus cstate: %d (%lu)\n", delay_in_us, data->last_state_idx, data->index);
 
 	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
 	data->timer_active = 1;
@@ -126,7 +126,6 @@ static void erfan_reflect(struct cpuidle_device *dev, int index)
 	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
 
 	data->last_state_idx = index;
-	data->reflection = jiffies;
 }
 
 /**
@@ -152,7 +151,6 @@ static int erfan_enable_device(struct cpuidle_driver *drv,
 
 	memset(data, 0, sizeof(struct erfan_device));
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
-	data->before_jiffies = jiffies;
 	data->hr_timer.function = &my_hrtimer_callback;
 	return 0;
 }
