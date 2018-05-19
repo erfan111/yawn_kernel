@@ -17,6 +17,10 @@
 #include <linux/module.h>
 #include <linux/random.h>
 
+#define US_TO_NS(x)	(x << 10)
+#define INTERVALS 8
+#define INTERVAL_SHIFT 3
+
 struct erfan_device {
 	int		last_state_idx;
 	unsigned long	index;
@@ -25,11 +29,12 @@ struct erfan_device {
 	unsigned long was_on_high_cstate;
 	struct hrtimer hr_timer;
 	int timer_active;
+	unsigned int	intervals[INTERVALS];
+	int		interval_ptr;
 };
 
 int counter = 0;
 
-#define US_TO_NS(x)	(x << 10)
 
 static DEFINE_PER_CPU(struct erfan_device, erfan_devices);
 
@@ -40,6 +45,50 @@ enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 	//printk_ratelimited("timer expired: before: %lu  after: %lu (%lu)\n", data->before_jiffies, data->after_jiffies, data->index);
 	return HRTIMER_NORESTART;
 }
+
+void interval_business(struct erfan_device *data, unsigned int measured_us, int cpu){
+	int i, divisor;
+	unsigned int max, thresh;
+	uint64_t avg, stddev;
+	/* update the repeating-pattern data */
+	data->intervals[data->interval_ptr++] = measured_us;
+	if (data->interval_ptr >= INTERVALS)
+		data->interval_ptr = 0;
+
+	max = 0;
+	avg = 0;
+	divisor = 0;
+	for (i = 0; i < INTERVALS; i++) {
+		unsigned int value = data->intervals[i];
+		if (value <= thresh) {
+			avg += value;
+			divisor++;
+			if (value > max)
+				max = value;
+		}
+	}
+	if (divisor == INTERVALS)
+		avg >>= INTERVAL_SHIFT;
+	else
+		do_div(avg, divisor);
+
+	/* Then try to determine standard deviation */
+	stddev = 0;
+	for (i = 0; i < INTERVALS; i++) {
+		unsigned int value = data->intervals[i];
+		if (value <= thresh) {
+			int64_t diff = value - avg;
+			stddev += diff * diff;
+		}
+	}
+	if (divisor == INTERVALS)
+		stddev >>= INTERVAL_SHIFT;
+	else
+		do_div(stddev, divisor);
+	printk_ratelimited("last residency= %d, average= %d  stddev= %d : cpu %d\n", measured_us, avg, stddev, cpu);
+}
+
+
 
 /**
  * erfan_select - selects the next idle state to enter
@@ -53,6 +102,9 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	int i, j, next_request;
 	ktime_t ktime;
 	unsigned long delay_in_us;
+	unsigned int measured_us;
+	measured_us = cpuidle_get_last_residency(dev);
+	interval_business(data, measured_us, dev->cpu);
 //	get_random_bytes(&j, sizeof(j));
 //	lessthan100 = j % drv->state_count;
 //	lessthan100++;
