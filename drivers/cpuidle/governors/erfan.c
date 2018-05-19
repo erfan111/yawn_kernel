@@ -50,6 +50,7 @@ void interval_business(struct erfan_device *data, unsigned int measured_us, int 
 	int i, divisor;
 	unsigned int max, thresh;
 	uint64_t avg, stddev;
+	thresh = UINT_MAX; /* Discard outliers above this value */
 	/* update the repeating-pattern data */
 	data->intervals[data->interval_ptr++] = measured_us;
 	if (data->interval_ptr >= INTERVALS)
