@@ -46,7 +46,7 @@ enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 	return HRTIMER_NORESTART;
 }
 
-void interval_business(struct erfan_device *data, unsigned int measured_us, int cpu){
+uint64_t interval_business(struct erfan_device *data, unsigned int measured_us, int cpu){
 	int i, divisor;
 	unsigned int max, thresh;
 	uint64_t avg, stddev;
@@ -86,7 +86,8 @@ void interval_business(struct erfan_device *data, unsigned int measured_us, int 
 		stddev >>= INTERVAL_SHIFT;
 	else
 		do_div(stddev, divisor);
-	printk_ratelimited("last residency= %d, average= %d  stddev= %d : cpu %d\n", measured_us, avg, stddev, cpu);
+	//printk_ratelimited("last residency= %d, average= %d  stddev= %d : cpu %d\n", measured_us, avg, stddev, cpu);
+	return avg;
 }
 
 
@@ -104,8 +105,9 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	ktime_t ktime;
 	unsigned long delay_in_us;
 	unsigned int measured_us;
+	uint64_t avg;
 	measured_us = cpuidle_get_last_residency(dev);
-	interval_business(data, measured_us, dev->cpu);
+	avg = interval_business(data, measured_us, dev->cpu);
 //	get_random_bytes(&j, sizeof(j));
 //	lessthan100 = j % drv->state_count;
 //	lessthan100++;

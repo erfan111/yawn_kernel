@@ -316,6 +316,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->predicted_us = DIV_ROUND_CLOSEST_ULL((uint64_t)data->next_timer_us *
 					 data->correction_factor[data->bucket],
 					 RESOLUTION * DECAY);
+	printk_ratelimited("cpu %d, timer = %u, correctionfactor = %u predicted %d \n", dev->cpu, data->next_timer_us, data->correction_factor[data->bucket], data->predicted_us);
 
 	get_typical_interval(data);
 
