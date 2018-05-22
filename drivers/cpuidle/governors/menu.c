@@ -285,7 +285,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	struct menu_device *data = this_cpu_ptr(&menu_devices);
 	int latency_req = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
-	int i;
+	int i, temp;
 	unsigned int interactivity_req;
 	unsigned long nr_iowaiters, cpu_load;
 
@@ -316,7 +316,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->predicted_us = DIV_ROUND_CLOSEST_ULL((uint64_t)data->next_timer_us *
 					 data->correction_factor[data->bucket],
 					 RESOLUTION * DECAY);
-	printk_ratelimited("cpu %d, timer = %u, correctionfactor = %u predicted %d \n", dev->cpu, data->next_timer_us, data->correction_factor[data->bucket], data->predicted_us);
+	//printk_ratelimited("cpu %d, timer = %u, correctionfactor = %u predicted %d \n", dev->cpu, data->next_timer_us, data->correction_factor[data->bucket], data->predicted_us);
 
 	get_typical_interval(data);
 
@@ -325,7 +325,10 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 * duration / latency ratio. Adjust the latency limit if
 	 * necessary.
 	 */
-	interactivity_req = data->predicted_us / performance_multiplier(nr_iowaiters, cpu_load);
+	temp = performance_multiplier(nr_iowaiters, cpu_load);
+	interactivity_req = data->predicted_us / temp;
+	printk_ratelimited("interactivity rate cpu %u: multiplier: %d, iowaiters: %lu, load: %lu, interactivityreq: %u, latency_req: %d\n",
+			dev->cpu,temp, nr_iowaiters, cpu_load, interactivity_req, latency_req );
 	if (latency_req > interactivity_req)
 		latency_req = interactivity_req;
 
@@ -345,7 +348,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
 		struct cpuidle_state_usage *su = &dev->states_usage[i];
-
+		//printk_ratelimited("state %d residency   %u   latency   %u\n");
 		if (s->disabled || su->disable)
 			continue;
 		if (s->target_residency > data->predicted_us)
