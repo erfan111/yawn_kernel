@@ -327,8 +327,8 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 */
 	temp = performance_multiplier(nr_iowaiters, cpu_load);
 	interactivity_req = data->predicted_us / temp;
-	printk_ratelimited("interactivity rate cpu %u: multiplier: %d, iowaiters: %lu, load: %lu, interactivityreq: %u, latency_req: %d\n",
-			dev->cpu,temp, nr_iowaiters, cpu_load, interactivity_req, latency_req );
+	//printk_ratelimited("interactivity rate cpu %u: multiplier: %d, iowaiters: %lu, load: %lu, interactivityreq: %u, latency_req: %d\n",
+	//		dev->cpu,temp, nr_iowaiters, cpu_load, interactivity_req, latency_req );
 	if (latency_req > interactivity_req)
 		latency_req = interactivity_req;
 
@@ -416,7 +416,7 @@ static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	/* Make sure our coefficients do not exceed unity */
 	if (measured_us > data->next_timer_us)
 		measured_us = data->next_timer_us;
-
+	printk_ratelimited("%u\n", measured_us);
 	/* Update our correction ratio */
 	new_factor = data->correction_factor[data->bucket];
 	new_factor -= new_factor / DECAY;
