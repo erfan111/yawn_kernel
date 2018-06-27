@@ -145,7 +145,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 
 
 	yawn_timer_interval = data->predicted_us - exit_latency;
-	printk_ratelimited("predicted = %u, yawn timer = %u\n", data->predicted_us, yawn_timer_interval);
+	//printk_ratelimited("predicted = %u, yawn timer = %u\n", data->predicted_us, yawn_timer_interval);
 
 	ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 
@@ -168,6 +168,7 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 
 	data->last_state_idx = index;
+	data->needs_update = 1;
 }
 
 /**
@@ -218,7 +219,7 @@ int residency_expert_select(struct yawn_device *data, struct cpuidle_device *dev
 	divisor = 0;
 	for (i = 0; i < INTERVALS; i++) {
 		unsigned int value = data->intervals[i];
-		printk_ratelimited("intervals %d = % u \n", i, value);
+		//printk_ratelimited("intervals %d = % u \n", i, value);
 		if (value <= thresh) {
 			avg += value;
 			divisor++;
