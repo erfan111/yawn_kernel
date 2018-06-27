@@ -80,7 +80,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	ktime_t ktime;
 	unsigned int exit_latency;
-	unsigned int index = 0, sum = 0;
+	unsigned int index = 0, sum = 0, i, yawn_timer_interval;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
@@ -142,8 +142,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->last_state_idx = i;
 		exit_latency = s->exit_latency;
 	}
-
-	ktime = ktime_set( 0, US_TO_NS(data->predicted_us - exit_latency));
+	yawn_timer_interval = data->predicted_us - exit_latency;
+	ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 
 	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
 	data->timer_active = 1;
