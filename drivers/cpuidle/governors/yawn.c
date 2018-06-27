@@ -28,6 +28,8 @@ struct yawn_device {
 	// Yawn Global Data
 	int		last_state_idx;
 	unsigned long	index;
+	unsigned int	next_timer_us;
+	unsigned int	predicted_us;
 	struct hrtimer hr_timer;
 	int timer_active;
 	int woke_by_timer;
@@ -77,8 +79,8 @@ enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	ktime_t ktime;
-	unsigned long delay_in_us;
-	unsigned int index = 0, expert_advice = 0, sum = 0;
+	unsigned int exit_latency;
+	unsigned int index = 0, sum = 0;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
@@ -110,9 +112,38 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 //	}
 	sum = expert_list[0].select(data, drv, dev);
 	index++;
+	data->predicted_us = sum / index;
 
-	delay_in_us = sum / index;
-	ktime = ktime_set( 0, US_TO_NS(delay_in_us));
+	/*
+	 * We want to default to C1 (hlt), not to busy polling
+	 * unless the timer is happening really really soon.
+	 */
+	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
+
+	if (data->next_timer_us > 5 &&
+		!drv->states[CPUIDLE_DRIVER_STATE_START].disabled &&
+		dev->states_usage[CPUIDLE_DRIVER_STATE_START].disable == 0)
+		data->last_state_idx = CPUIDLE_DRIVER_STATE_START;
+
+	/*
+	 * Find the idle state with the lowest power while satisfying
+	 * our constraints.
+	 */
+	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
+		struct cpuidle_state *s = &drv->states[i];
+		struct cpuidle_state_usage *su = &dev->states_usage[i];
+		if (s->disabled || su->disable)
+			continue;
+		if (s->target_residency > data->predicted_us)
+			continue;
+//		if (s->exit_latency > latency_req)
+//			continue;
+
+		data->last_state_idx = i;
+		exit_latency = s->exit_latency;
+	}
+
+	ktime = ktime_set( 0, US_TO_NS(data->predicted_us - exit_latency));
 
 	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
 	data->timer_active = 1;
