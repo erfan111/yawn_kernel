@@ -47,10 +47,11 @@ struct expert {
 	 int (*select) (struct yawn_device *data, struct cpuidle_driver *drv, struct cpuidle_device *dev);
 	 void (*reflect) (struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us);
 	 void (*data);
-	 struct list_head expert_list;
+	 //struct list_head expert_list;
 };
 
-struct list_head expert_list;
+//struct list_head expert_list;
+struct expert expert_list[2];
 
 static DEFINE_PER_CPU(struct yawn_device, yawn_devices);
 
@@ -59,6 +60,7 @@ static DEFINE_PER_CPU(struct yawn_device, yawn_devices);
 // ######################## Start of Yawn utility function definitions #############################
 
 static void yawn_update(struct cpuidle_driver*, struct cpuidle_device*, struct yawn_device*);
+
 enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
@@ -98,14 +100,17 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		goto out;
 	}
 	// query the experts for their delay prediction
-	struct list_head *position = NULL ;
-	struct expert  *expertptr  = NULL ;
-	list_for_each ( position , &expert_list )
-	{
-		 expertptr = list_entry(position, struct expert, expert_list);
-		 sum += expertptr->select(data, drv, dev);
-		 index++;
-	}
+//	struct list_head *position = NULL ;
+//	struct expert  *expertptr  = NULL ;
+//	list_for_each ( position , &expert_list )
+//	{
+//		 expertptr = list_entry(position, struct expert, expert_list);
+//		 sum += expertptr->select(data, drv, dev);
+//		 index++;
+//	}
+	sum = expert_list[0].select(data, drv, dev);
+	index++;
+
 	delay_in_us = sum / index;
 	ktime = ktime_set( 0, US_TO_NS(delay_in_us));
 
@@ -138,19 +143,20 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, struct yawn_device *data)
 {
 	unsigned int measured_us = cpuidle_get_last_residency(dev);
-	struct list_head *position = NULL ;
-	struct expert  *expertptr  = NULL ;
-	list_for_each ( position , &expert_list )
-	{
-		 expertptr = list_entry(position, struct expert, expert_list);
-		 expertptr->reflect(data, dev, measured_us);
-	}
+//	struct list_head *position = NULL ;
+//	struct expert  *expertptr  = NULL ;
+//	list_for_each ( position , &expert_list )
+//	{
+//		 expertptr = list_entry(position, struct expert, expert_list);
+//		 expertptr->reflect(data, dev, measured_us);
+//	}
+	expert_list[0].reflect(data, dev, measured_us);
 
 }
 
 static void register_expert(struct expert *e)
 {
-	list_add(&e->expert_list, &expert_list);
+//	list_add(&e->expert_list, &expert_list);
 }
 
 // ######################## End of of Yawn utility function definitions ###########################
@@ -218,8 +224,8 @@ struct expert residency_expert = {
 		.weight = 1,
 		.init = residency_expert_init,
 		.reflect = residency_expert_reflect,
-		.select = residency_expert_select,
-		.expert_list = LIST_HEAD_INIT(residency_expert.expert_list)
+		.select = residency_expert_select
+//		.expert_list = LIST_HEAD_INIT(residency_expert.expert_list)
 };
 
 // ## Expert2: Netwrok Rate Expert ------------------------
@@ -244,12 +250,12 @@ void network_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev
 }
 
 struct expert network_expert = {
-		.name = "residency",
+		.name = "network",
 		.weight = 1,
 		.init = network_expert_init,
 		.reflect = network_expert_reflect,
-		.select = network_expert_select,
-		.expert_list = LIST_HEAD_INIT(network_expert.expert_list)
+		.select = network_expert_select
+//		.expert_list = LIST_HEAD_INIT(network_expert.expert_list)
 };
 
 // ######################## End of Experts definition ###########################################
@@ -268,8 +274,9 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 
 	memset(data, 0, sizeof(struct yawn_device));
 
-	LIST_HEAD(expert_list);
-	register_expert(&residency_expert);
+//	LIST_HEAD(expert_list);
+//	register_expert(&residency_expert);
+	expert_list[0] = residency_expert;
 //	register_expert(&network_expert);
 
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
