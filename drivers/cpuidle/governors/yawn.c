@@ -52,7 +52,7 @@ struct expert {
 	 struct list_head expert_list;
 };
 
-LIST_HEAD(expert_list);
+struct list_head expert_list;
 //struct expert expert_list[2];
 
 static DEFINE_PER_CPU(struct yawn_device, yawn_devices);
@@ -311,6 +311,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 
 	memset(data, 0, sizeof(struct yawn_device));
 
+	INIT_LIST_HEAD(expert_list);
 	register_expert(&residency_expert);
 //	expert_list[0] = residency_expert;
 //	register_expert(&network_expert);
