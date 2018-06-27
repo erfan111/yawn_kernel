@@ -84,7 +84,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
-		yawn_update(data, drv, dev);
+		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
 	// did an inmature wake up happen? turn off the timer
