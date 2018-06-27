@@ -192,7 +192,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 
 static void register_expert(struct expert *e)
 {
-	list_add(&e->expert_list, &expert_list);
+	list_add(&(e->expert_list), &expert_list);
 }
 
 // ######################## End of of Yawn utility function definitions ###########################
