@@ -142,7 +142,11 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->last_state_idx = i;
 		exit_latency = s->exit_latency;
 	}
+
+
 	yawn_timer_interval = data->predicted_us - exit_latency;
+	printk_ratelimited("predicted = %u, yawn timer = %u\n", data->predicted_us, yawn_timer_interval);
+
 	ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 
 	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
