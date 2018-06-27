@@ -218,6 +218,7 @@ int residency_expert_select(struct yawn_device *data, struct cpuidle_device *dev
 	divisor = 0;
 	for (i = 0; i < INTERVALS; i++) {
 		unsigned int value = data->intervals[i];
+		printk_ratelimited("intervals %d = % u \n", i, value);
 		if (value <= thresh) {
 			avg += value;
 			divisor++;
