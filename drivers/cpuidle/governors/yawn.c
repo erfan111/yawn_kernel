@@ -90,9 +90,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
-
-	net_io_waiters = sched_get_network_io_waiters();
-	printk_ratelimited("network io waiters: %u\n", net_io_waiters);
+	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
+	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
 	{
@@ -101,7 +100,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->inmature++;
 	}
 	// did we wake by yawn timer? then a request might nearly arrive. Go to polling and wait.
-	if(net_io_waiters && data->woke_by_timer)
+	if(throughput_req && data->woke_by_timer)   // =e later need to get from sched_nr_io_waiters
 	{
 		data->woke_by_timer = 0;
 		data->last_state_idx = 0;
@@ -153,7 +152,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(net_io_waiters)
+	if(throughput_req)  // =e later need to get from sched_nr_io_waiters
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
 		ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
