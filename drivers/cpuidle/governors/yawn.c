@@ -16,6 +16,7 @@
 #include <linux/math64.h>
 #include <linux/module.h>
 #include <linux/random.h>
+#include <linux/list_sort.h>
 
 #define EXPERT_NAME_LEN 15
 #define US_TO_NS(x)	(x << 10)
@@ -223,13 +224,12 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		 expertptr->measured_us = measured_us;
 	}
 	list_sort(NULL, &expert_list, prediction_cmp);
-	*position = NULL ;
-	*expertptr  = NULL ;
-	list_for_each ( position , &expert_list )
+	struct list_head *position2 = NULL ;
+	list_for_each ( position2 , &expert_list )
 	{
 		if(!wght)
 			break;
-		expertptr = list_entry(position, struct expert, expert_list);
+		expertptr = list_entry(position2, struct expert, expert_list);
 		expertptr->weight = wght--;
 	}
 }
