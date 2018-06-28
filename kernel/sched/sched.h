@@ -622,6 +622,9 @@ struct rq {
 	u64 clock_task;
 
 	atomic_t nr_iowait;
+	// =e
+	atomic_t nr_network_iowait;
+	//
 
 #ifdef CONFIG_SMP
 	struct root_domain *rd;

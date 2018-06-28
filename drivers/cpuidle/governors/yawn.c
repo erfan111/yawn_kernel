@@ -83,13 +83,15 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	ktime_t ktime;
 	unsigned int exit_latency;
-	unsigned int index = 0, sum = 0, i, yawn_timer_interval, expert_decision;
+	unsigned int index = 0, sum = 0, i, yawn_timer_interval, expert_decision, net_io_waiters;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
+
+	net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
 	{
@@ -98,7 +100,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->inmature++;
 	}
 	// did we wake by yawn timer? then a request might nearly arrive. Go to polling and wait.
-	if(data->woke_by_timer)
+	if(net_io_waiters && data->woke_by_timer)
 	{
 		data->woke_by_timer = 0;
 		data->last_state_idx = 0;
@@ -117,8 +119,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 			 index++;
 		 }
 	}
-//	sum = expert_list[0].select(data, drv, dev);
-//	index++;
 	if(!index)
 		index++;
 	data->predicted_us = sum / index;
@@ -152,14 +152,14 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
+	if(net_io_waiters)
+	{
+		yawn_timer_interval = data->predicted_us - exit_latency;
+		ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+		hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+		data->timer_active = 1;
+	}
 
-	yawn_timer_interval = data->predicted_us - exit_latency;
-	//printk_ratelimited("predicted = %u, yawn timer = %u\n", data->predicted_us, yawn_timer_interval);
-
-	ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-
-	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-	data->timer_active = 1;
 out:
 	return data->last_state_idx;
 }
