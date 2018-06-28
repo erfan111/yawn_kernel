@@ -19,6 +19,7 @@
 #include <linux/list_sort.h>
 
 #define EXPERT_NAME_LEN 15
+#define ACTIVE_EXPERTS 2
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
 #define INTERVAL_SHIFT 3
@@ -31,12 +32,16 @@ struct yawn_device {
 	unsigned long	index;
 	unsigned int	next_timer_us;
 	unsigned int	predicted_us;
+	unsigned int	measured_us;
 	unsigned int attendees;
 	struct hrtimer hr_timer;
 	int timer_active;
 	int woke_by_timer;
 	int needs_update;
 	int inmature;
+	int expert_id_counter;
+	unsigned int weights[ACTIVE_EXPERTS];
+	unsigned int predictions[ACTIVE_EXPERTS];
 	// Residency Expert Data
 	unsigned int	intervals[INTERVALS];
 	int		interval_ptr;
@@ -48,14 +53,12 @@ struct yawn_device {
 };
 
 struct expert {
+	 int id;
 	 char name[EXPERT_NAME_LEN];
-	 unsigned int weight;
-	 unsigned int last_prediction;
-	 unsigned int measured_us;
 	 void (*init) (struct yawn_device *data, struct cpuidle_device *dev);
 	 int (*select) (struct yawn_device *data, struct cpuidle_driver *drv, struct cpuidle_device *dev);
 	 void (*reflect) (struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us);
-	 void (*data);
+	 struct yawn_device (*data);
 	 struct list_head expert_list;
 };
 
@@ -116,12 +119,12 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	list_for_each ( position , &expert_list )
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
-		 expertptr->last_prediction = expertptr->select(data, drv, dev);
+		 data->predictions[expertptr->id] = expertptr->select(data, drv, dev);
 		 if(expert_decision)
 		 {
 			 data->attendees++;
-			 sum += expertptr->weight * expertptr->last_prediction;
-			 index+= expertptr->weight;
+			 sum += data->weights[expertptr->id] * data->predictions[expertptr->id];
+			 index+= data->weights[expertptr->id];
 		 }
 	}
 	if(!index)
@@ -192,13 +195,13 @@ static int prediction_cmp(void *priv, struct list_head *a, struct list_head *b)
 	expert_a = list_entry(a, struct expert, expert_list);
 	expert_b = list_entry(b, struct expert, expert_list);
 
-	if(!expert_a->last_prediction)
+	if(!expert_a->data->predictions[expert_a->id])
 		return 1;
-	if(!expert_b->last_prediction)
+	if(!expert_b->data->predictions[expert_b->id])
 		return -1;
-	if (abs(expert_a->last_prediction - expert_a->measured_us) < abs(expert_b->last_prediction - expert_b->measured_us))
+	if (abs(expert_a->data->predictions[expert_a->id] - expert_a->data->measured_us) < abs(expert_b->data->predictions[expert_b->id] - expert_b->data->measured_us))
 		return -1;
-	else if (abs(expert_a->last_prediction - expert_a->measured_us) > abs(expert_b->last_prediction - expert_b->measured_us))
+	else if (abs(expert_a->data->predictions[expert_a->id] - expert_a->data->measured_us) > abs(expert_b->data->predictions[expert_b->id] - expert_b->data->measured_us))
 		return 1;
 
 	return 0;
@@ -212,7 +215,7 @@ static int prediction_cmp(void *priv, struct list_head *a, struct list_head *b)
 static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, struct yawn_device *data)
 {
 	unsigned int measured_us = cpuidle_get_last_residency(dev);
-
+	data->measured_us = measured_us;
 	// Updating the weights of the experts and calling their reflection methods
 	int wght = data->attendees;
 	struct list_head *position = NULL ;
@@ -221,7 +224,6 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
 		 expertptr->reflect(data, dev, measured_us);
-		 expertptr->measured_us = measured_us;
 	}
 	list_sort(NULL, &expert_list, prediction_cmp);
 	struct list_head *position2 = NULL ;
@@ -230,13 +232,16 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		if(!wght)
 			break;
 		expertptr = list_entry(position2, struct expert, expert_list);
-		expertptr->weight = wght--;
+		data->weights[expertptr->id] = wght--;
 	}
 }
 
-static void register_expert(struct expert *e)
+static void register_expert(struct expert *e, struct yawn_device *data)
 {
 	list_add(&(e->expert_list), &expert_list);
+	e->id = data->expert_id_counter++;
+	data->weights[e->id] = 1;
+	e->data = data;
 }
 
 // ######################## End of of Yawn utility function definitions ###########################
@@ -302,7 +307,6 @@ void residency_expert_reflect(struct yawn_device *data, struct cpuidle_device *d
 
 struct expert residency_expert = {
 		.name = "residency",
-		.weight = 1,
 		.init = residency_expert_init,
 		.reflect = residency_expert_reflect,
 		.select = residency_expert_select,
@@ -376,7 +380,6 @@ void network_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev
 
 struct expert network_expert = {
 		.name = "network",
-		.weight = 1,
 		.init = network_expert_init,
 		.reflect = network_expert_reflect,
 		.select = network_expert_select,
@@ -400,8 +403,8 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	memset(data, 0, sizeof(struct yawn_device));
 
 	INIT_LIST_HEAD(&expert_list);
-	register_expert(&residency_expert);
-	register_expert(&network_expert);
+	register_expert(&residency_expert, data);
+	register_expert(&network_expert, data);
 
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	data->hr_timer.function = &my_hrtimer_callback;
