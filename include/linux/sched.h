@@ -3216,22 +3216,10 @@ static inline unsigned long rlimit_max(unsigned int limit)
 
 // =e
 
-static inline void sched_inc_network_io_waiters()
-{
-	struct rq *rq = this_rq();
-	atomic_dec(&rq->nr_network_iowait);
-}
+extern void sched_inc_network_io_waiters(void);
 
-static inline void sched_inc_network_io_waiters()
-{
-	struct rq *rq = this_rq();
-	atomic_inc(&rq->nr_network_iowait);
-}
+extern void sched_inc_network_io_waiters(void);
 
-static inline int sched_get_network_io_waiters()
-{
-	struct rq *rq = this_rq();
-	int ret = atomic_read(&rq->nr_network_iowait);
-	return ret;
-}
+extern int sched_get_network_io_waiters(void);
+
 //

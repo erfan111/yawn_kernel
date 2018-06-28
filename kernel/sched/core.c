@@ -8674,6 +8674,27 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 
 #endif	/* CONFIG_CGROUP_SCHED */
 
+// =e
+void sched_inc_network_io_waiters()
+{
+	struct rq *rq = this_rq();
+	atomic_dec(&rq->nr_network_iowait);
+}
+
+void sched_inc_network_io_waiters()
+{
+	struct rq *rq = this_rq();
+	atomic_inc(&rq->nr_network_iowait);
+}
+
+int sched_get_network_io_waiters()
+{
+	struct rq *rq = this_rq();
+	int ret = atomic_read(&rq->nr_network_iowait);
+	return ret;
+}
+//
+
 void dump_cpu_task(int cpu)
 {
 	pr_info("Task dump for CPU %d:\n", cpu);
