@@ -311,7 +311,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 
 	memset(data, 0, sizeof(struct yawn_device));
 
-	INIT_LIST_HEAD(expert_list);
+	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert);
 //	expert_list[0] = residency_expert;
 //	register_expert(&network_expert);
