@@ -30,6 +30,7 @@ struct yawn_device {
 	unsigned long	index;
 	unsigned int	next_timer_us;
 	unsigned int	predicted_us;
+	unsigned int attendees;
 	struct hrtimer hr_timer;
 	int timer_active;
 	int woke_by_timer;
@@ -48,6 +49,8 @@ struct yawn_device {
 struct expert {
 	 char name[EXPERT_NAME_LEN];
 	 unsigned int weight;
+	 unsigned int last_prediction;
+	 unsigned int measured_us;
 	 void (*init) (struct yawn_device *data, struct cpuidle_device *dev);
 	 int (*select) (struct yawn_device *data, struct cpuidle_driver *drv, struct cpuidle_device *dev);
 	 void (*reflect) (struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us);
@@ -112,15 +115,16 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	list_for_each ( position , &expert_list )
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
-		 expert_decision = expertptr->select(data, drv, dev);
+		 expertptr->last_prediction = expertptr->select(data, drv, dev);
 		 if(expert_decision)
 		 {
-			 sum += expert_decision;
-			 index++;
+			 data->attendees++;
+			 sum += expertptr->weight * expertptr->last_prediction;
+			 index+= expertptr->weight;
 		 }
 	}
 	if(!index)
-		index++;
+		index = 1;
 	data->predicted_us = sum / index;
 
 	/*
@@ -180,6 +184,25 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 	data->needs_update = 1;
 }
 
+static int prediction_cmp(void *priv, struct list_head *a, struct list_head *b)
+{
+	struct expert *expert_a, *expert_b;
+
+	expert_a = list_entry(a, struct expert, expert_list);
+	expert_b = list_entry(b, struct expert, expert_list);
+
+	if(!expert_a->last_prediction)
+		return 1;
+	if(!expert_b->last_prediction)
+		return -1;
+	if (abs(expert_a->last_prediction - expert_a->measured_us) < abs(expert_b->last_prediction - expert_b->measured_us))
+		return -1;
+	else if (abs(expert_a->last_prediction - expert_a->measured_us) > abs(expert_b->last_prediction - expert_b->measured_us))
+		return 1;
+
+	return 0;
+}
+
 /**
  * yawn_update - attempts to guess what happened after entry
  * @drv: cpuidle driver containing state data
@@ -188,15 +211,27 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, struct yawn_device *data)
 {
 	unsigned int measured_us = cpuidle_get_last_residency(dev);
+
+	// Updating the weights of the experts and calling their reflection methods
+	int wght = data->attendees;
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
 	list_for_each ( position , &expert_list )
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
 		 expertptr->reflect(data, dev, measured_us);
+		 expertptr->measured_us = measured_us;
 	}
-//	expert_list[0].reflect(data, dev, measured_us);
-
+	list_sort(NULL, &expert_list, prediction_cmp);
+	*position = NULL ;
+	*expertptr  = NULL ;
+	list_for_each ( position , &expert_list )
+	{
+		if(!wght)
+			break;
+		expertptr = list_entry(position, struct expert, expert_list);
+		expertptr->weight = wght--;
+	}
 }
 
 static void register_expert(struct expert *e)
