@@ -39,6 +39,9 @@ struct yawn_device {
 	unsigned int	intervals[INTERVALS];
 	int		interval_ptr;
 	int		moving_average;
+	// Network Expert Data
+	unsigned int throughputs[INTERVALS];
+	int throughput_ptr;
 
 };
 
@@ -80,13 +83,15 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	ktime_t ktime;
 	unsigned int exit_latency;
-	unsigned int index = 0, sum = 0, i, yawn_timer_interval;
+	unsigned int index = 0, sum = 0, i, yawn_timer_interval, expert_decision, net_io_waiters;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
+
+	net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
 	{
@@ -95,7 +100,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->inmature++;
 	}
 	// did we wake by yawn timer? then a request might nearly arrive. Go to polling and wait.
-	if(data->woke_by_timer)
+	if(net_io_waiters && data->woke_by_timer)
 	{
 		data->woke_by_timer = 0;
 		data->last_state_idx = 0;
@@ -107,11 +112,15 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	list_for_each ( position , &expert_list )
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
-		 sum += expertptr->select(data, drv, dev);
-		 index++;
+		 expert_decision = expertptr->select(data, drv, dev);
+		 if(expert_decision)
+		 {
+			 sum += expert_decision;
+			 index++;
+		 }
 	}
-//	sum = expert_list[0].select(data, drv, dev);
-//	index++;
+	if(!index)
+		index++;
 	data->predicted_us = sum / index;
 
 	/*
@@ -143,14 +152,14 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
+	if(net_io_waiters)
+	{
+		yawn_timer_interval = data->predicted_us - exit_latency;
+		ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+		hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+		data->timer_active = 1;
+	}
 
-	yawn_timer_interval = data->predicted_us - exit_latency;
-	//printk_ratelimited("predicted = %u, yawn timer = %u\n", data->predicted_us, yawn_timer_interval);
-
-	ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-
-	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-	data->timer_active = 1;
 out:
 	return data->last_state_idx;
 }
@@ -275,10 +284,54 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
+	unsigned int next_request;
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
-	unsigned int next_request = div_u64(1000000, throughput_req);
+	if(throughput_req){
+		next_request = div_u64(1000000, throughput_req);
+		/* update the throughput data */
+		data->throughputs[data->throughput_ptr++] = next_request;
+		if (data->throughput_ptr >= INTERVALS)
+			data->throughput_ptr = 0;
+	}
+	int i, divisor;
+	unsigned int max, thresh;
+	uint64_t avg, stddev;
+	thresh = UINT_MAX; /* Discard outliers above this value */
 
-	return next_request;
+	max = 0;
+	avg = 0;
+	divisor = 0;
+	for (i = 0; i < INTERVALS; i++) {
+		unsigned int value = data->throughputs[i];
+		if (value <= thresh) {
+			avg += value;
+			divisor++;
+			if (value > max)
+				max = value;
+		}
+	}
+	if (divisor == INTERVALS)
+		avg >>= INTERVAL_SHIFT;
+	else
+		do_div(avg, divisor);
+
+	/* Then try to determine standard deviation */
+	stddev = 0;
+	for (i = 0; i < INTERVALS; i++) {
+		unsigned int value = data->throughputs[i];
+		if (value <= thresh) {
+			int64_t diff = value - avg;
+			stddev += diff * diff;
+		}
+	}
+	if (divisor == INTERVALS)
+		stddev >>= INTERVAL_SHIFT;
+	else
+		do_div(stddev, divisor);
+	if(avg)
+		return avg;
+
+	return -1;
 }
 
 void network_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev)
@@ -313,8 +366,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert);
-//	expert_list[0] = residency_expert;
-//	register_expert(&network_expert);
+	register_expert(&network_expert);
 
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	data->hr_timer.function = &my_hrtimer_callback;

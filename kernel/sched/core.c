@@ -7555,6 +7555,9 @@ void __init sched_init(void)
 #endif
 		init_rq_hrtick(rq);
 		atomic_set(&rq->nr_iowait, 0);
+		// =e
+		atomic_set(&rq->nr_network_iowait, 0);
+		//
 	}
 
 	set_load_weight(&init_task);
