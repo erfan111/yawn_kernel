@@ -92,6 +92,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	}
 
 	net_io_waiters = sched_get_network_io_waiters();
+	printk_ratelimited("network io waiters: %u\n", net_io_waiters);
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
 	{

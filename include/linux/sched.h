@@ -3218,7 +3218,7 @@ static inline unsigned long rlimit_max(unsigned int limit)
 
 extern void sched_inc_network_io_waiters(void);
 
-extern void sched_inc_network_io_waiters(void);
+extern void sched_dec_network_io_waiters(void);
 
 extern int sched_get_network_io_waiters(void);
 

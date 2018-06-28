@@ -8675,7 +8675,7 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 #endif	/* CONFIG_CGROUP_SCHED */
 
 // =e
-void sched_inc_network_io_waiters()
+void sched_dec_network_io_waiters()
 {
 	struct rq *rq = this_rq();
 	atomic_dec(&rq->nr_network_iowait);
