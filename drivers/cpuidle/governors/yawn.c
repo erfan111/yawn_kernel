@@ -94,7 +94,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
-		yawn_update(drv, dev, data);
+		//yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
