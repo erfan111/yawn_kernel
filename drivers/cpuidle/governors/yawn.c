@@ -94,7 +94,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
-		//yawn_update(drv, dev, data);
+		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
@@ -225,14 +225,14 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		 expertptr = list_entry(position, struct expert, expert_list);
 		 expertptr->reflect(data, dev, measured_us);
 	}
-	list_sort(NULL, &expert_list, prediction_cmp);
+	//list_sort(NULL, &expert_list, prediction_cmp);
 	struct list_head *position2 = NULL ;
 	list_for_each ( position2 , &expert_list )
 	{
-		if(!wght)
-			break;
 		expertptr = list_entry(position2, struct expert, expert_list);
-		data->weights[expertptr->id] = wght--;
+		if(data->predictions[expertptr->id]){
+			data->weights[expertptr->id] = wght--;
+		}
 	}
 }
 
