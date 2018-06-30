@@ -191,17 +191,21 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 static int prediction_cmp(void *priv, struct list_head *a, struct list_head *b)
 {
 	struct expert *expert_a, *expert_b;
+	struct yawn_device *data = (struct yawn_device*) priv;
+	int results[2];
 
 	expert_a = list_entry(a, struct expert, expert_list);
 	expert_b = list_entry(b, struct expert, expert_list);
 
-	if(!expert_a->data->predictions[expert_a->id])
+	if(!data->predictions[expert_a->id])
 		return 1;
-	if(!expert_b->data->predictions[expert_b->id])
+	if(!data->predictions[expert_b->id])
 		return -1;
-	if (abs(expert_a->data->predictions[expert_a->id] - expert_a->data->measured_us) < abs(expert_b->data->predictions[expert_b->id] - expert_b->data->measured_us))
+	result[0] = data->predictions[expert_a->id] - data->measured_us;
+	result[1] = data->predictions[expert_b->id] - data->measured_us;
+	if (abs(result[0]) < abs(result[1]))
 		return -1;
-	else if (abs(expert_a->data->predictions[expert_a->id] - expert_a->data->measured_us) > abs(expert_b->data->predictions[expert_b->id] - expert_b->data->measured_us))
+	else if (abs(result[0]) > abs(result[1]))
 		return 1;
 
 	return 0;
@@ -225,7 +229,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		 expertptr = list_entry(position, struct expert, expert_list);
 		 expertptr->reflect(data, dev, measured_us);
 	}
-	//list_sort(NULL, &expert_list, prediction_cmp);
+	list_sort((void*)data, &expert_list, prediction_cmp);
 	struct list_head *position2 = NULL ;
 	list_for_each ( position2 , &expert_list )
 	{
