@@ -192,7 +192,7 @@ static int prediction_cmp(void *priv, struct list_head *a, struct list_head *b)
 {
 	struct expert *expert_a, *expert_b;
 	struct yawn_device *data = (struct yawn_device*) priv;
-	int results[2];
+	int result[2];
 
 	expert_a = list_entry(a, struct expert, expert_list);
 	expert_b = list_entry(b, struct expert, expert_list);
