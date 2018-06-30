@@ -120,7 +120,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
 		 data->predictions[expertptr->id] = expertptr->select(data, drv, dev);
-		 if(expert_decision)
+		 if(data->predictions[expertptr->id])
 		 {
 			 data->attendees++;
 			 sum += data->weights[expertptr->id] * data->predictions[expertptr->id];
