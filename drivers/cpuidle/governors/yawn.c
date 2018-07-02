@@ -21,7 +21,7 @@
 
 #define EXPERT_NAME_LEN 15
 #define ACTIVE_EXPERTS 2
-#define INITIAL_WEIGHT 1000000
+#define INITIAL_WEIGHT 1000
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
 #define INTERVAL_SHIFT 3
