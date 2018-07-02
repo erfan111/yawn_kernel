@@ -122,6 +122,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
 		 data->predictions[expertptr->id] = expertptr->select(data, drv, dev);
+		 printk_ratelimited("select! expert %d is %d!\n", expertptr->id, data->predictions[expertptr->id]);
 		 if(data->predictions[expertptr->id])
 		 {
 			 data->attendees++;
@@ -132,6 +133,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(!index)
 		index = 1;
 	data->predicted_us = sum / index;
+	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->predicted_us);
 
 	/*
 	 * We want to default to C1 (hlt), not to busy polling
@@ -217,7 +219,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			if(!data->weights[expertptr->id])
 			{
 				data->weights[expertptr->id] = 1;
-				printk("warning! weight %d is zero!\n", expertptr->id);
+				printk_ratelimited("warning! weight %d is zero!\n", expertptr->id);
 			}
 		}
 		new_weight += (data->weights[expertptr->id]);
