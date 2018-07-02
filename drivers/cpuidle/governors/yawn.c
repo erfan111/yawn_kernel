@@ -103,7 +103,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
-	throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
+	throughput_req = 10000;// pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
