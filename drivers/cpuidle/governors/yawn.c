@@ -202,15 +202,16 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 {
 	unsigned int measured_us = cpuidle_get_last_residency(dev);
 	unsigned int new_weight = 0, loss;
-	data->measured_us = measured_us;
-	// Updating the weights of the experts and calling their reflection methods
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
+	data->measured_us = measured_us;
+
+	// Updating the weights of the experts and calling their reflection methods
 	list_for_each ( position , &expert_list )
 	{
 		expertptr = list_entry(position, struct expert, expert_list);
 		expertptr->reflect(data, dev, measured_us);
-		if(data->predictions[expertptr->id])
+		if(data->attendees > 1 && data->predictions[expertptr->id])
 		{
 			loss = abs(data->predictions[expertptr->id] - data->measured_us);
 			if(loss > 999)
@@ -220,7 +221,6 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			if(!data->weights[expertptr->id])
 			{
 				data->weights[expertptr->id] = 1;
-				printk_ratelimited("warning! weight %d is zero!\n", expertptr->id);
 			}
 		}
 		new_weight += (data->weights[expertptr->id]);
@@ -317,6 +317,8 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned int next_request;
+	int i, divisor;
+	unsigned int max, thresh;
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	if(throughput_req){
 		next_request = div_u64(1000000, throughput_req);
@@ -325,8 +327,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		if (data->throughput_ptr >= INTERVALS)
 			data->throughput_ptr = 0;
 	}
-	int i, divisor;
-	unsigned int max, thresh;
+
 	uint64_t avg, stddev;
 	thresh = UINT_MAX; /* Discard outliers above this value */
 
