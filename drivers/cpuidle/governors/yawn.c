@@ -118,6 +118,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->last_state_idx = 0;
 		goto out;
 	}
+	data->attendees = 0;
 //	 query the experts for their delay prediction
 	list_for_each ( position , &expert_list )
 	{
@@ -319,6 +320,8 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	unsigned int next_request;
 	int i, divisor;
 	unsigned int max, thresh;
+	uint64_t avg, stddev;
+
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	if(throughput_req){
 		next_request = div_u64(1000000, throughput_req);
@@ -328,7 +331,6 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			data->throughput_ptr = 0;
 	}
 
-	uint64_t avg, stddev;
 	thresh = UINT_MAX; /* Discard outliers above this value */
 
 	max = 0;
