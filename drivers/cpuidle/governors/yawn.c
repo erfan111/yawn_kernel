@@ -43,7 +43,7 @@ struct yawn_device {
 	int inmature;
 	int expert_id_counter;
 	unsigned int weights[ACTIVE_EXPERTS];
-	unsigned int predictions[ACTIVE_EXPERTS];
+	int predictions[ACTIVE_EXPERTS];
 	unsigned int weighted_sigma;
 	// Residency Expert Data
 	unsigned int	intervals[INTERVALS];
@@ -93,6 +93,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	ktime_t ktime;
 	unsigned int exit_latency;
 	unsigned int index = 0, sum = 0, i, yawn_timer_interval;
+	int throughput_req;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
@@ -101,7 +102,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
-	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
+	throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
@@ -133,7 +134,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(!index)
 		index = 1;
 	data->predicted_us = sum / index;
-	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->predicted_us);
+	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->weights[0], data->weights[1], data->predicted_us);
 
 	/*
 	 * We want to default to C1 (hlt), not to busy polling
