@@ -230,14 +230,14 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		expertptr->reflect(data, dev, measured_us);
 		if(data->attendees > 1 && data->predictions[expertptr->id] != -1)
 		{
-			printk_ratelimited("update: attendees = %u prediction %d = %d\n", data->attendees, expertptr->id, data->predictions[expertptr->id]);
+			printk_ratelimited("update: floor = %u,  attendees = %u prediction %d = %d   measured = %u\n", floor, data->attendees, expertptr->id, data->predictions[expertptr->id], data->measured_us);
 			loss = abs(data->predictions[expertptr->id] - data->measured_us);
 			if(loss > 999)
 				loss = 999;
 			data->weights[expertptr->id] *= EXP[loss];
 			if(floor == 0)
 			{
-				printk("ERROR!!!!!!!!!!!!!!!!!!!!!\n");
+				//printk("ERROR!!!!!!!!!!!!!!!!!!!!!\n");
 				return;
 			}
 			data->weights[expertptr->id] /= floor;
@@ -245,6 +245,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			{
 				for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 					data->weights[i] = INITIAL_WEIGHT;
+				break;
 			}
 		}
 	}
