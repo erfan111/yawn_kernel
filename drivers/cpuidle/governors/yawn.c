@@ -116,7 +116,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(throughput_req && data->woke_by_timer)   // =e later need to get from sched_nr_io_waiters
 	{
 		data->woke_by_timer = 0;
-		data->last_state_idx = 0;
+		data->last_state_idx = 1;
 		goto out;
 	}
 	data->attendees = 0;
