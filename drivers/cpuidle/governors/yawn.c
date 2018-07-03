@@ -139,7 +139,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		return 1;
 	}
 	data->predicted_us = sum / index;
-	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->weights[0], data->weights[1], data->predicted_us);
+	//printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->weights[0], data->weights[1], data->predicted_us);
 
 	/*
 	 * We want to default to C1 (hlt), not to busy polling
@@ -232,7 +232,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		expertptr->reflect(data, dev, measured_us);
 		if(data->attendees > 1 && data->predictions[expertptr->id] != -1)
 		{
-			printk_ratelimited("update: floor = %u,  attendees = %u prediction %d = %d   measured = %u\n", floor, data->attendees, expertptr->id, data->predictions[expertptr->id], data->measured_us);
+			//printk_ratelimited("update: floor = %u,  attendees = %u prediction %d = %d   measured = %u\n", floor, data->attendees, expertptr->id, data->predictions[expertptr->id], data->measured_us);
 			loss = abs(data->predictions[expertptr->id] - data->measured_us);
 			if(loss > 999)
 				loss = 999;
