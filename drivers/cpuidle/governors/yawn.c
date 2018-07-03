@@ -103,7 +103,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
-	throughput_req = 10000;// pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
+	throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
@@ -133,8 +133,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 			 index+= data->weights[expertptr->id];
 		 }
 	}
-	if(!index)
-		index = 1;
 	data->predicted_us = sum / index;
 	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->weights[0], data->weights[1], data->predicted_us);
 
@@ -213,12 +211,12 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	{
 		list_for_each ( position_1 , &expert_list )
 		{
-			expertptr = list_entry(position, struct expert, expert_list);
+			expertptr = list_entry(position_1, struct expert, expert_list);
 			loss = abs(data->former_predictions[expertptr->id] - data->measured_us);
 			floor += data->weights[expertptr->id] * EXP[loss];
 		}
+		floor /= 1000;
 	}
-	floor /= 1000;
 	// Updating the weights of the experts and calling their reflection methods
 	list_for_each ( position , &expert_list )
 	{
