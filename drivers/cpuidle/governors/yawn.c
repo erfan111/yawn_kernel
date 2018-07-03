@@ -127,7 +127,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		 data->predictions[expertptr->id] = expertptr->select(data, drv, dev);
 		 if(data->predictions[expertptr->id] != -1)
 		 {
-			 printk_ratelimited("select! expert %d is %d!\n", expertptr->id, data->predictions[expertptr->id]);
+			 //printk_ratelimited("select! expert %d is %d!\n", expertptr->id, data->predictions[expertptr->id]);
 			 data->attendees++;
 			 sum += data->weights[expertptr->id] * data->predictions[expertptr->id];
 			 index+= data->weights[expertptr->id];
