@@ -219,6 +219,8 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		{
 			expertptr = list_entry(position_1, struct expert, expert_list);
 			loss = abs(data->former_predictions[expertptr->id] - data->measured_us);
+			if(loss > 999)
+				loss = 999;
 			floor += data->weights[expertptr->id] * EXP[loss];
 		}
 		floor /= 1000;
