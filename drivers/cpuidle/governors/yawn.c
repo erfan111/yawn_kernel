@@ -133,6 +133,11 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 			 index+= data->weights[expertptr->id];
 		 }
 	}
+	if(index == 0)
+	{
+		printk("ERROR2!!!!!!!!!!!!!!!!!!!!!\n");
+		return 1;
+	}
 	data->predicted_us = sum / index;
 	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->weights[0], data->weights[1], data->predicted_us);
 
@@ -204,11 +209,12 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	unsigned int new_weight = 0, loss;
 	struct list_head *position = NULL, *position_1 = NULL ;
 	struct expert  *expertptr  = NULL ;
-	unsigned int floor = 0, i;
+	unsigned int floor = 1, i;
 	data->measured_us = measured_us;
 
 	if(data->attendees > 1)
 	{
+		floor--;
 		list_for_each ( position_1 , &expert_list )
 		{
 			expertptr = list_entry(position_1, struct expert, expert_list);
@@ -229,6 +235,11 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			if(loss > 999)
 				loss = 999;
 			data->weights[expertptr->id] *= EXP[loss];
+			if(floor == 0)
+			{
+				printk("ERROR!!!!!!!!!!!!!!!!!!!!!\n");
+				return;
+			}
 			data->weights[expertptr->id] /= floor;
 			if(!data->weights[expertptr->id])
 			{
