@@ -25,6 +25,8 @@
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
 #define INTERVAL_SHIFT 3
+#define EXPONENTIAL_FACTOR 18
+#define EXPONENTIAL_FLOOR 20
 
 // ######################## Start of Data definitions ##############################################
 
@@ -47,9 +49,7 @@ struct yawn_device {
 	int former_predictions[ACTIVE_EXPERTS];
 	unsigned int weighted_sigma;
 	// Residency Expert Data
-	unsigned int	intervals[INTERVALS];
-	int		interval_ptr;
-	int		moving_average;
+	unsigned int residency_moving_average;
 	// Network Expert Data
 	unsigned int throughputs[INTERVALS];
 	int throughput_ptr;
@@ -278,51 +278,16 @@ void residency_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int residency_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	int i, divisor;
-	unsigned int max, thresh;
-	uint64_t avg, stddev;
-	thresh = UINT_MAX; /* Discard outliers above this value */
-
-	max = 0;
-	avg = 0;
-	divisor = 0;
-	for (i = 0; i < INTERVALS; i++) {
-		unsigned int value = data->intervals[i];
-		//printk_ratelimited("intervals %d = % u \n", i, value);
-		if (value <= thresh) {
-			avg += value;
-			divisor++;
-			if (value > max)
-				max = value;
-		}
-	}
-	if (divisor == INTERVALS)
-		avg >>= INTERVAL_SHIFT;
-	else
-		do_div(avg, divisor);
-
-	/* Then try to determine standard deviation */
-	stddev = 0;
-	for (i = 0; i < INTERVALS; i++) {
-		unsigned int value = data->intervals[i];
-		if (value <= thresh) {
-			int64_t diff = value - avg;
-			stddev += diff * diff;
-		}
-	}
-	if (divisor == INTERVALS)
-		stddev >>= INTERVAL_SHIFT;
-	else
-		do_div(stddev, divisor);
-	return avg;
+	unsigned int ema = data->residency_moving_average;
+	ema = (EXPONENTIAL_FACTOR * ema) + (EXPONENTIAL_FLOOR - EXPONENTIAL_FACTOR) * data->measured_us;
+	ema /= EXPONENTIAL_FLOOR;
+	data->residency_moving_average = ema;
+	return ema;
 }
 
 void residency_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us)
 {
-	/* update the repeating-pattern data */
-	data->intervals[data->interval_ptr++] = measured_us;
-	if (data->interval_ptr >= INTERVALS)
-		data->interval_ptr = 0;
+
 }
 
 struct expert residency_expert = {
