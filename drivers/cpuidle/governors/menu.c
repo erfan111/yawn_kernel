@@ -416,7 +416,7 @@ static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	/* Make sure our coefficients do not exceed unity */
 	if (measured_us > data->next_timer_us)
 		measured_us = data->next_timer_us;
-	printk_ratelimited("%u\n", measured_us);
+	//printk_ratelimited("%u\n", measured_us);
 	/* Update our correction ratio */
 	new_factor = data->correction_factor[data->bucket];
 	new_factor -= new_factor / DECAY;

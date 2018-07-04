@@ -20,13 +20,17 @@
 #include "exp.h"
 
 #define EXPERT_NAME_LEN 15
-#define ACTIVE_EXPERTS 2
+#define ACTIVE_EXPERTS 3
 #define INITIAL_WEIGHT 1000
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
 #define INTERVAL_SHIFT 3
 #define EXPONENTIAL_FACTOR 18
 #define EXPONENTIAL_FLOOR 20
+#define BUCKETS 12
+#define RESOLUTION 1024
+#define DECAY 8
+#define MAX_INTERESTING 50000
 
 // ######################## Start of Data definitions ##############################################
 
@@ -53,6 +57,9 @@ struct yawn_device {
 	// Network Expert Data
 	unsigned int throughputs[INTERVALS];
 	int throughput_ptr;
+	// Timer Expert Data
+	unsigned int	bucket;
+	unsigned int	correction_factor[BUCKETS];
 
 };
 
@@ -119,6 +126,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->last_state_idx = 1;
 		goto out;
 	}
+	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 	data->attendees = 0;
 //	 query the experts for their delay prediction
 	list_for_each ( position , &expert_list )
@@ -145,7 +153,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 * We want to default to C1 (hlt), not to busy polling
 	 * unless the timer is happening really really soon.
 	 */
-	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 
 	if (data->next_timer_us > 5 &&
 		!drv->states[CPUIDLE_DRIVER_STATE_START].disabled &&
@@ -210,6 +217,12 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	struct list_head *position = NULL, *position_1 = NULL ;
 	struct expert  *expertptr  = NULL ;
 	unsigned int floor = 1, i;
+	int last_idx = data->last_state_idx;
+	struct cpuidle_state *target = &drv->states[last_idx];
+	if (measured_us > target->exit_latency)
+		measured_us -= target->exit_latency;
+	if (measured_us > data->next_timer_us)
+		measured_us = data->next_timer_us;
 	data->measured_us = measured_us;
 
 	if(data->attendees > 1)
@@ -360,7 +373,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	return -1;
 }
 
-void network_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev)
+void network_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us)
 {
 
 }
@@ -371,6 +384,77 @@ struct expert network_expert = {
 		.reflect = network_expert_reflect,
 		.select = network_expert_select,
 		.expert_list = LIST_HEAD_INIT(network_expert.expert_list)
+};
+
+
+// ## Expert3: Timer Expert ------------------------
+
+static inline int which_bucket(unsigned int duration, unsigned long nr_iowaiters)
+{
+	int bucket = 0;
+
+	/*
+	 * We keep two groups of stats; one with no
+	 * IO pending, one without.
+	 * This allows us to calculate
+	 * E(duration)|iowait
+	 */
+	if (nr_iowaiters)
+		bucket = BUCKETS/2;
+
+	if (duration < 10)
+		return bucket;
+	if (duration < 100)
+		return bucket + 1;
+	if (duration < 1000)
+		return bucket + 2;
+	if (duration < 10000)
+		return bucket + 3;
+	if (duration < 100000)
+		return bucket + 4;
+	return bucket + 5;
+}
+
+void timer_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
+{
+
+}
+
+int timer_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
+{
+	unsigned long nr_iowaiters, cpu_load, expert_prediction;
+	get_iowait_load(&nr_iowaiters, &cpu_load);
+	data->bucket = which_bucket(data->next_timer_us, nr_iowaiters);
+	expert_prediction = DIV_ROUND_CLOSEST_ULL((uint64_t)data->next_timer_us *
+						 data->correction_factor[data->bucket],
+						 RESOLUTION * DECAY);
+	return expert_prediction;
+}
+
+void timer_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us)
+{
+	unsigned int new_factor;
+
+	new_factor = data->correction_factor[data->bucket];
+	new_factor -= new_factor / DECAY;
+
+	if (data->next_timer_us > 0 && measured_us < MAX_INTERESTING)
+		new_factor += RESOLUTION * measured_us / data->next_timer_us;
+	else
+		new_factor += RESOLUTION;
+	if (DECAY == 1 && unlikely(new_factor == 0))
+		new_factor = 1;
+
+	data->correction_factor[data->bucket] = new_factor;
+
+}
+
+struct expert timer_expert = {
+		.name = "timer",
+		.init = timer_expert_init,
+		.reflect = timer_expert_reflect,
+		.select = timer_expert_select,
+		.expert_list = LIST_HEAD_INIT(timer_expert.expert_list)
 };
 
 // ######################## End of Experts definition ###########################################
@@ -392,7 +476,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
-
+	register_expert(&timer_expert, data);
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	data->hr_timer.function = &my_hrtimer_callback;
 	data->weighted_sigma = ACTIVE_EXPERTS * INITIAL_WEIGHT;
