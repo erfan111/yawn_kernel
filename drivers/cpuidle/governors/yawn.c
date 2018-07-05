@@ -120,7 +120,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->inmature++;
 	}
 	// did we wake by yawn timer? then a request might nearly arrive. Go to polling and wait.
-	if(throughput_req && data->woke_by_timer)   // =e later need to get from sched_nr_io_waiters
+	if(throughput_req && data->woke_by_timer && !get_ywn_tasks_woke())   // =e later need to get from sched_nr_io_waiters
 	{
 		data->woke_by_timer = 0;
 		data->last_state_idx = 1;
@@ -183,6 +183,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 		hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
 		data->timer_active = 1;
+		reset_ywn_tasks_woke();
 	}
 
 out:

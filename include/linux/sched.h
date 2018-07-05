@@ -3222,4 +3222,7 @@ extern void sched_dec_network_io_waiters(void);
 
 extern int sched_get_network_io_waiters(void);
 
+extern void reset_ywn_tasks_woke(void);
+
+extern int get_ywn_tasks_woke(void);
 //

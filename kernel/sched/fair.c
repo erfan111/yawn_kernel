@@ -4187,6 +4187,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
+	rq->ywn_tasks_woke = 1;
 
 	for_each_sched_entity(se) {
 		if (se->on_rq)
