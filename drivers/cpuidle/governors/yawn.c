@@ -52,6 +52,7 @@ struct yawn_device {
 	int predictions[ACTIVE_EXPERTS];
 	int former_predictions[ACTIVE_EXPERTS];
 	unsigned int weighted_sigma;
+	unsigned int will_wake_with_timer;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
@@ -159,6 +160,12 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		dev->states_usage[CPUIDLE_DRIVER_STATE_START].disable == 0)
 		data->last_state_idx = CPUIDLE_DRIVER_STATE_START;
 
+	if(data->predicted_us > data->next_timer_us)
+	{
+		data->predicted_us = data->next_timer_us;
+		data->will_wake_with_timer = 1;
+	}
+
 	/*
 	 * Find the idle state with the lowest power while satisfying
 	 * our constraints.
@@ -177,7 +184,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(throughput_req)  // =e later need to get from sched_nr_io_waiters
+	if(throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
 		ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
@@ -225,6 +232,12 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	if (measured_us > data->next_timer_us)
 		measured_us = data->next_timer_us;
 	data->measured_us = measured_us;
+
+	if(data->will_wake_with_timer)
+	{
+		data->will_wake_with_timer = 0;
+		return;
+	}
 
 	if(data->attendees > 1)
 	{
