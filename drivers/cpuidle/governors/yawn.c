@@ -120,12 +120,12 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->inmature++;
 	}
 	// did we wake by yawn timer? then a request might nearly arrive. Go to polling and wait.
-	if(throughput_req && data->woke_by_timer && !get_ywn_tasks_woke())   // =e later need to get from sched_nr_io_waiters
-	{
-		data->woke_by_timer = 0;
-		data->last_state_idx = 1;
-		goto out;
-	}
+//	if(throughput_req && data->woke_by_timer && !get_ywn_tasks_woke())   // =e later need to get from sched_nr_io_waiters
+//	{
+//		data->woke_by_timer = 0;
+//		data->last_state_idx = 1;
+//		goto out;
+//	}
 	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 	data->attendees = 0;
 //	 query the experts for their delay prediction
