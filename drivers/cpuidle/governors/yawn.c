@@ -121,12 +121,12 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->inmature++;
 	}
 	// did we wake by yawn timer? then a request might nearly arrive. Go to polling and wait.
-	if(throughput_req && data->woke_by_timer && !get_ywn_tasks_woke())   // =e later need to get from sched_nr_io_waiters
-	{
-		data->woke_by_timer = 0;
-		data->last_state_idx = 1;
-		goto out;
-	}
+//	if(throughput_req && data->woke_by_timer && !get_ywn_tasks_woke())   // =e later need to get from sched_nr_io_waiters
+//	{
+//		data->woke_by_timer = 0;
+//		data->last_state_idx = 1;
+//		goto out;
+//	}
 	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 	data->attendees = 0;
 //	 query the experts for their delay prediction
@@ -278,6 +278,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
+	printk_ratelimited("maex w=%u, p=%u, netex w=%u, p=%u, cfex w=%u, p=%u, sys_pred = %u, real_sleep = %u\n",
+			data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+			data->weights[2], data->predictions[2], data->predicted_us, data->measured_us);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
