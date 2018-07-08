@@ -170,7 +170,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 * Find the idle state with the lowest power while satisfying
 	 * our constraints.
 	 */
-	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count-1; i++) {
+	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
 		struct cpuidle_state_usage *su = &dev->states_usage[i];
 		if (s->disabled || su->disable)
@@ -347,7 +347,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	if(throughput_req){
 		next_request = div_u64(1000000, throughput_req);
-		next_request *= (num_online_cpus()+1);
+//		next_request *= (num_online_cpus()+1);
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = next_request;
 		if (data->throughput_ptr >= INTERVALS)
