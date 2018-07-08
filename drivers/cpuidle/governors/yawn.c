@@ -347,7 +347,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	if(throughput_req){
 		next_request = div_u64(1000000, throughput_req);
-//		next_request *= (num_online_cpus()+1);
+		next_request *= (num_online_cpus()/2);
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = next_request;
 		if (data->throughput_ptr >= INTERVALS)
