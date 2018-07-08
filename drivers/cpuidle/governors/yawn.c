@@ -279,9 +279,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		}
 	}
 	if(dev->cpu == 4)
-		printk_ratelimited("maex w=%u, p=%u, netex w=%u, p=%u, cfex w=%u, p=%u, sys_pred = %u, real_sleep=%u next_timer=%u\n",
+		printk_ratelimited("maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
 			data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-			data->weights[2], data->predictions[2], data->predicted_us, data->measured_us, data->next_timer_us);
+			data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -347,6 +347,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	if(throughput_req){
 		next_request = div_u64(1000000, throughput_req);
+		next_request *= (num_online_cpus()+1);
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = next_request;
 		if (data->throughput_ptr >= INTERVALS)
