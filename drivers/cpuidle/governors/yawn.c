@@ -53,6 +53,7 @@ struct yawn_device {
 	int former_predictions[ACTIVE_EXPERTS];
 	unsigned int weighted_sigma;
 	unsigned int will_wake_with_timer;
+	int strict_latency;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
@@ -106,11 +107,13 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
+	int state_count = drv->state_count;
 	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
+	data->strict_latency = 0;
 	throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
@@ -170,7 +173,10 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 * Find the idle state with the lowest power while satisfying
 	 * our constraints.
 	 */
-	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
+	if(data->strict_latency)
+		state_count--;
+
+	for (i = CPUIDLE_DRIVER_STATE_START; i < state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
 		struct cpuidle_state_usage *su = &dev->states_usage[i];
 		if (s->disabled || su->disable)
@@ -352,6 +358,9 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->throughputs[data->throughput_ptr++] = next_request;
 		if (data->throughput_ptr >= INTERVALS)
 			data->throughput_ptr = 0;
+		if(throughput_req < 5000){
+			data->strict_latency = 1;
+		}
 	}
 
 	thresh = UINT_MAX; /* Discard outliers above this value */
