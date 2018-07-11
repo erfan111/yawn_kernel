@@ -72,7 +72,7 @@ struct expert {
 	 int id;
 	 char name[EXPERT_NAME_LEN];
 	 void (*init) (struct yawn_device *data, struct cpuidle_device *dev);
-	 int (*select) (struct yawn_device *data, struct cpuidle_driver *drv, struct cpuidle_device *dev);
+	 int (*select) (struct yawn_device *data, struct cpuidle_device *dev);
 	 void (*reflect) (struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us);
 	 struct yawn_device (*data);
 	 struct list_head expert_list;
@@ -138,7 +138,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	list_for_each ( position , &expert_list )
 	{
 		 expertptr = list_entry(position, struct expert, expert_list);
-		 data->predictions[expertptr->id] = expertptr->select(data, drv, dev);
+		 data->predictions[expertptr->id] = expertptr->select(data, dev);
 		 if(data->predictions[expertptr->id] != -1)
 		 {
 			 //printk_ratelimited("select! expert %d is %d!\n", expertptr->id, data->predictions[expertptr->id]);
@@ -201,7 +201,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		reset_ywn_tasks_woke();
 	}
 
-out:
 	return data->last_state_idx;
 }
 
@@ -229,7 +228,7 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, struct yawn_device *data)
 {
 	unsigned int measured_us = cpuidle_get_last_residency(dev);
-	unsigned int new_weight = 0, loss;
+	unsigned int loss;
 	struct list_head *position = NULL, *position_1 = NULL ;
 	struct expert  *expertptr  = NULL ;
 	unsigned int floor = 1, i;
@@ -355,21 +354,19 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	uint64_t avg, stddev;
 	ttwups = sched_get_nr_ttwu();
 	if(!ttwups)
-	{
-		printk_ratelimited("Error! schedstat is not enabled\n");
 		return -1;
-	}
+
 	getnstimeofday(&after);
 	period = after.tv_nsec - data->before.tv_nsec;
 	difference = ttwups - data->last_ttwu_counter;
 	difference *= 1000;
 	if(!difference)
 	{
-		printk_ratelimited("Error! rate is zero\n");
+		printk_ratelimited("Error! rate is zero, period = %u, difference = %u\n", period, difference);
 		return -1;
 	}
 	next_request = div_u64(period,difference);
-	printk_ratelimited("rate ,next req=%u   cpu(%u)\n", next_request, dev->cpu);
+	printk_ratelimited("rate ,next req=%u cpu(%u) period = %u, difference = %u\n", next_request, dev->cpu, period, difference);
 	if(next_request && next_request < 1000000){
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = next_request;
