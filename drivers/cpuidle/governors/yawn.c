@@ -62,6 +62,7 @@ struct yawn_device {
 	int throughput_ptr;
 	struct timespec before;
 	unsigned int last_ttwu_counter;
+	unsigned int next_request;
 	// Timer Expert Data
 	unsigned int	bucket;
 	unsigned int	correction_factor[BUCKETS];
@@ -347,38 +348,43 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned int next_request, ttwups, period, difference;
+	unsigned int ttwups, period, difference;
 	struct timespec after;
 	int i, divisor;
 	unsigned int max, thresh;
 	uint64_t avg, stddev;
-	ttwups = sched_get_nr_ttwu();
-	if(!ttwups)
-		return -1;
 
 	getnstimeofday(&after);
-	period = after.tv_nsec - data->before.tv_nsec;
-	difference = ttwups - data->last_ttwu_counter;
-	difference *= 1000;
-	if(!difference)
+	period = after.tv_sec - data->before.tv_sec;
+	if(period == 1)
 	{
-		printk_ratelimited("Error! rate is zero, period = %u, difference = %u\n", period, difference);
-		return -1;
+		ttwups = sched_get_nr_ttwu();
+		if(!ttwups)
+			return -1;
+		difference = ttwups - data->last_ttwu_counter;
+		difference *= 1000;
+		if(!difference)
+		{
+			printk_ratelimited("Error! rate is zero, period = %u, difference = %u\n", period, difference);
+			return -1;
+		}
+		data->next_request = div_u64(period,difference);
+		data->last_ttwu_counter = ttwups;
+		data->before = after;
 	}
-	next_request = div_u64(period,difference);
-	printk_ratelimited("rate ,next req=%u cpu(%u) period = %u, difference = %u\n", next_request, dev->cpu, period, difference);
-	if(next_request && next_request < 1000000){
+
+	printk_ratelimited("rate ,next req=%u cpu(%u) period = %u, difference = %u\n", data->next_request, dev->cpu, period, difference);
+	if(data->next_request && data->next_request < 100000){
 		/* update the throughput data */
-		data->throughputs[data->throughput_ptr++] = next_request;
+		data->throughputs[data->throughput_ptr++] = data->next_request;
 		if(data->throughput_ptr >= INTERVALS)
 			data->throughput_ptr = 0;
-		if(next_request < 200){
+		if(data->next_request < 200){
 			data->strict_latency = 1;
 		}
 		data->throughput_req = 1;
 	}
-	data->last_ttwu_counter = ttwups;
-	data->before = after;
+
 
 	thresh = UINT_MAX; /* Discard outliers above this value */
 
@@ -413,7 +419,10 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	else
 		do_div(stddev, divisor);
 	if(avg)
+	{
+		printk_ratelimited("network expert averaging= %u\n", avg);
 		return avg;
+	}
 
 	return -1;
 }
