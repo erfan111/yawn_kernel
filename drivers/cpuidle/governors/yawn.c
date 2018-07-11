@@ -54,11 +54,14 @@ struct yawn_device {
 	unsigned int weighted_sigma;
 	unsigned int will_wake_with_timer;
 	int strict_latency;
+	int throughput_req;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
 	unsigned int throughputs[INTERVALS];
 	int throughput_ptr;
+	struct timespec before;
+	unsigned int last_ttwu_counter;
 	// Timer Expert Data
 	unsigned int	bucket;
 	unsigned int	correction_factor[BUCKETS];
@@ -103,7 +106,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	ktime_t ktime;
 	unsigned int exit_latency;
 	unsigned int index = 0, sum = 0, i, yawn_timer_interval;
-	int throughput_req;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
@@ -113,8 +115,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
+	data->throughput_req = 0;
 	data->strict_latency = 0;
-	throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
@@ -190,7 +192,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
+	if(data->throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
 		ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
@@ -340,28 +342,37 @@ struct expert residency_expert = {
 
 void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 {
-
+	getnstimeofday(&data->before);
+	data->last_ttwu_counter = sched_get_nr_ttwu();
 }
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned int next_request;
+	unsigned int next_request, ttwups, period, difference;
+	struct timespec after;
 	int i, divisor;
 	unsigned int max, thresh;
 	uint64_t avg, stddev;
+	ttwups = sched_get_nr_ttwu();
+	getnstimeofday(&after);
+	period = after.tv_nsec - data->before.tv_nsec;
+	difference = ttwups - data->last_ttwu_counter;
+	difference *= 1000;
 
-	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
-	if(throughput_req){
-		next_request = div_u64(1000000, throughput_req);
-		next_request *= (num_online_cpus()/2);
+	next_request = div_u64(period/difference);
+	printk_ratelimited("rate ,next req=%u   cpu(%u)\n", next_request, dev->cpu);
+	if(next_request && next_request < 1000000){
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = next_request;
-		if (data->throughput_ptr >= INTERVALS)
+		if(data->throughput_ptr >= INTERVALS)
 			data->throughput_ptr = 0;
-		if(throughput_req < 5000){
+		if(next_request < 200){
 			data->strict_latency = 1;
 		}
+		data->throughput_req = 1;
 	}
+	data->last_ttwu_counter = ttwups;
+	data->before = after;
 
 	thresh = UINT_MAX; /* Discard outliers above this value */
 
