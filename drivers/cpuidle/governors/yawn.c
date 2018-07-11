@@ -363,7 +363,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	period = after.tv_nsec - data->before.tv_nsec;
 	difference = ttwups - data->last_ttwu_counter;
 	difference *= 1000;
-
+	if(!difference)
+	{
+		printk_ratelimited("Error! rate is zero\n");
+		return -1;
+	}
 	next_request = div_u64(period,difference);
 	printk_ratelimited("rate ,next req=%u   cpu(%u)\n", next_request, dev->cpu);
 	if(next_request && next_request < 1000000){
