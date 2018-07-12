@@ -360,70 +360,72 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(period >= 500000)
 	{
 		ttwups = sched_get_nr_ttwu(dev->cpu);
-		printk_ratelimited("sampling ttwus now= %lu   before = %lu cpu(%u)\n",ttwups, data->last_ttwu_counter, dev->cpu);
+		//printk_ratelimited("sampling ttwus now= %lu   before = %lu cpu(%u)\n",ttwups, data->last_ttwu_counter, dev->cpu);
 		if(!ttwups)
 			return -1;
 		difference = ttwups - data->last_ttwu_counter;
 		if(difference == 0)
 		{
-			printk_ratelimited("Error! rate is zero, period = %lu, ttwus now= %lu, before = %lu difference = %lu\n", period, ttwups, data->last_ttwu_counter, difference);
+			//printk_ratelimited("Error! rate is zero, period = %lu, ttwus now= %lu, before = %lu difference = %lu\n", period, ttwups, data->last_ttwu_counter, difference);
 			return -1;
 		}
 		data->next_request = div_u64(period,difference);
+		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
 	}
 
-	printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 	if(data->next_request && data->next_request < 100000){
 		/* update the throughput data */
-		data->throughputs[data->throughput_ptr++] = data->next_request;
-		if(data->throughput_ptr >= INTERVALS)
-			data->throughput_ptr = 0;
+//		data->throughputs[data->throughput_ptr++] = data->next_request;
+//		if(data->throughput_ptr >= INTERVALS)
+//			data->throughput_ptr = 0;
 		if(data->next_request < 200){
 			data->strict_latency = 1;
 		}
 		data->throughput_req = 1;
+		printk_ratelimited("network expert: we predict next request= %u\n", data->next_request);
+		return data->next_request;
 	}
 
 
-	thresh = UINT_MAX; /* Discard outliers above this value */
-
-	max = 0;
-	avg = 0;
-	divisor = 0;
-	for (i = 0; i < INTERVALS; i++) {
-		unsigned int value = data->throughputs[i];
-		if (value <= thresh) {
-			avg += value;
-			divisor++;
-			if (value > max)
-				max = value;
-		}
-	}
-	if (divisor == INTERVALS)
-		avg >>= INTERVAL_SHIFT;
-	else
-		do_div(avg, divisor);
-
-	/* Then try to determine standard deviation */
-	stddev = 0;
-	for (i = 0; i < INTERVALS; i++) {
-		unsigned int value = data->throughputs[i];
-		if (value <= thresh) {
-			int64_t diff = value - avg;
-			stddev += diff * diff;
-		}
-	}
-	if (divisor == INTERVALS)
-		stddev >>= INTERVAL_SHIFT;
-	else
-		do_div(stddev, divisor);
-	if(avg)
-	{
-		printk_ratelimited("network expert averaging= %u\n", avg);
-		return avg;
-	}
+//	thresh = UINT_MAX; /* Discard outliers above this value */
+//
+//	max = 0;
+//	avg = 0;
+//	divisor = 0;
+//	for (i = 0; i < INTERVALS; i++) {
+//		unsigned int value = data->throughputs[i];
+//		if (value <= thresh) {
+//			avg += value;
+//			divisor++;
+//			if (value > max)
+//				max = value;
+//		}
+//	}
+//	if (divisor == INTERVALS)
+//		avg >>= INTERVAL_SHIFT;
+//	else
+//		do_div(avg, divisor);
+//
+//	/* Then try to determine standard deviation */
+//	stddev = 0;
+//	for (i = 0; i < INTERVALS; i++) {
+//		unsigned int value = data->throughputs[i];
+//		if (value <= thresh) {
+//			int64_t diff = value - avg;
+//			stddev += diff * diff;
+//		}
+//	}
+//	if (divisor == INTERVALS)
+//		stddev >>= INTERVAL_SHIFT;
+//	else
+//		do_div(stddev, divisor);
+//	if(avg)
+//	{
+//		printk_ratelimited("network expert averaging= %u\n", avg);
+//		return avg;
+//	}
 
 	return -1;
 }
