@@ -348,16 +348,17 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned int ttwups, period, difference;
+	unsigned long ttwups, period, difference;
 	struct timespec after;
 	int i, divisor;
 	unsigned int max, thresh;
 	uint64_t avg, stddev;
 
 	getnstimeofday(&after);
-	period = after.tv_sec - data->before.tv_sec;
-	if(period == 1)
+	period = after.tv_nsec - data->before.tv_nsec;
+	if(period >= 500000000)
 	{
+		printk_ratelimited("sampling ttwus\n");
 		ttwups = sched_get_nr_ttwu();
 		if(!ttwups)
 			return -1;
