@@ -348,8 +348,7 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned long ttwups ;
-	long period, difference;
+	unsigned long ttwups, period, difference ;
 	struct timeval after, time_diff;
 	int i, divisor;
 	unsigned int max, thresh;
@@ -361,13 +360,13 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(period >= 500000)
 	{
 		ttwups = sched_get_nr_ttwu(dev->cpu);
-		printk_ratelimited("sampling ttwus now= %ul   before = %ul cpu(%u)\n",ttwups, data->last_ttwu_counter, dev->cpu);
+		printk_ratelimited("sampling ttwus now= %lu   before = %lu cpu(%u)\n",ttwups, data->last_ttwu_counter, dev->cpu);
 		if(!ttwups)
 			return -1;
 		difference = ttwups - data->last_ttwu_counter;
 		if(difference == 0)
 		{
-			printk_ratelimited("Error! rate is zero, period = %ld, ttwus now= %ul, before = %ul difference = %ld\n", period, ttwups, data->last_ttwu_counter, difference);
+			printk_ratelimited("Error! rate is zero, period = %lu, ttwus now= %lu, before = %lu difference = %lu\n", period, ttwups, data->last_ttwu_counter, difference);
 			return -1;
 		}
 		data->next_request = div_u64(period,difference);
@@ -375,7 +374,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->before = after;
 	}
 
-	printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %ul, before = %ul, difference = %ld\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
+	printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 	if(data->next_request && data->next_request < 100000){
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = data->next_request;
