@@ -61,7 +61,7 @@ struct yawn_device {
 	unsigned int throughputs[INTERVALS];
 	int throughput_ptr;
 	struct timeval before;
-	unsigned int last_ttwu_counter;
+	unsigned long last_ttwu_counter;
 	unsigned int next_request;
 	// Timer Expert Data
 	unsigned int	bucket;
@@ -361,7 +361,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(period >= 500000)
 	{
 		ttwups = sched_get_nr_ttwu();
-		printk_ratelimited("sampling ttwus %ul cpu(%u)\n",ttwups, dev->cpu);
+		printk_ratelimited("sampling ttwus now= %ul   before = %ul cpu(%u)\n",ttwups, data->last_ttwu_counter, dev->cpu);
 		if(!ttwups)
 			return -1;
 		difference = ttwups - data->last_ttwu_counter;
