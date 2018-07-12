@@ -356,7 +356,9 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	uint64_t avg, stddev;
 
 	getnstimeofday(&after);
-	period = timespec_sub(after,data->before);
+	period = NSEC_PER_SEC * after.tv_sec + after.tv_nsec;
+	period -= NSEC_PER_SEC * data->before.tv_sec + data->before.tv_nsec;
+
 	if(period >= 500000000ll)
 	{
 		printk_ratelimited("sampling ttwus\n");
@@ -367,7 +369,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		difference *= 1000;
 		if(!difference)
 		{
-			printk_ratelimited("Error! rate is zero, period = %u, difference = %u\n", period, difference);
+			printk_ratelimited("Error! rate is zero, period = %ll, difference = %u\n", period, difference);
 			return -1;
 		}
 		data->next_request = div_u64(period,difference);
