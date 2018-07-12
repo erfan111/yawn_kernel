@@ -60,7 +60,7 @@ struct yawn_device {
 	// Network Expert Data
 	unsigned int throughputs[INTERVALS];
 	int throughput_ptr;
-	struct timespec before;
+	struct timeval before;
 	unsigned int last_ttwu_counter;
 	unsigned int next_request;
 	// Timer Expert Data
@@ -342,21 +342,21 @@ struct expert residency_expert = {
 
 void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	getnstimeofday(&data->before);
+	gettimeofday(&data->before, NULL);
 	data->last_ttwu_counter = sched_get_nr_ttwu();
 }
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned long ttwups, period, difference;
-	struct timespec after;
+	struct timeval after;
 	int i, divisor;
 	unsigned int max, thresh;
 	uint64_t avg, stddev;
 
-	getnstimeofday(&after);
-	period = after.tv_nsec - data->before.tv_nsec;
-	if(period >= 500000000)
+	gettimeofday(&after, NULL);
+	period = after.tv_usec - data->before.tv_usec;
+	if(period >= 500000)
 	{
 		printk_ratelimited("sampling ttwus\n");
 		ttwups = sched_get_nr_ttwu();
