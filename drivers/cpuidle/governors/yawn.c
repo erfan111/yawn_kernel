@@ -365,7 +365,6 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		if(!ttwups)
 			return -1;
 		difference = ttwups - data->last_ttwu_counter;
-		difference *= 1000;
 		if(difference == 0)
 		{
 			printk_ratelimited("Error! rate is zero, period = %ld, difference = %ld\n", period, difference);
