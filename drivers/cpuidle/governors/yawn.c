@@ -60,7 +60,7 @@ struct yawn_device {
 	// Network Expert Data
 	unsigned int throughputs[INTERVALS];
 	int throughput_ptr;
-	struct timespec before;
+	struct timeval before;
 	unsigned int last_ttwu_counter;
 	unsigned int next_request;
 	// Timer Expert Data
@@ -342,34 +342,33 @@ struct expert residency_expert = {
 
 void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	getnstimeofday(&data->before);
+	do_gettimeofday(&data->before);
 	data->last_ttwu_counter = sched_get_nr_ttwu();
 }
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned long ttwups ;
-	long long period, difference;
-	struct timespec after, time_diff;
+	long period, difference;
+	struct timeval after, time_diff;
 	int i, divisor;
 	unsigned int max, thresh;
 	uint64_t avg, stddev;
+	do_gettimeofday(&after);
+	period = after.tv_sec * 1000000 + after.tv_usec;
+	period -= 1000000 * data->before.tv_sec + data->before.tv_usec;
 
-	getnstimeofday(&after);
-	period = NSEC_PER_SEC * after.tv_sec + after.tv_nsec;
-	period -= NSEC_PER_SEC * data->before.tv_sec + data->before.tv_nsec;
-
-	if(period >= 500000000ll)
+	if(period >= 500000)
 	{
 		ttwups = sched_get_nr_ttwu();
-		printk_ratelimited("sampling ttwus %ul\n",ttwups);
+		printk_ratelimited("sampling ttwus %ul cpu(%u)\n",ttwups, dev->cpu);
 		if(!ttwups)
 			return -1;
 		difference = ttwups - data->last_ttwu_counter;
 		difference *= 1000;
-		if(!difference)
+		if(difference == 0)
 		{
-			printk_ratelimited("Error! rate is zero, period = %ll, difference = %ll\n", period, difference);
+			printk_ratelimited("Error! rate is zero, period = %ld, difference = %ld\n", period, difference);
 			return -1;
 		}
 		data->next_request = div_u64(period,difference);
@@ -377,7 +376,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->before = after;
 	}
 
-	printk_ratelimited("rate ,next req=%u cpu(%u) period = %ll, difference = %ll\n", data->next_request, dev->cpu, period, difference);
+	printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, difference = %ld\n", data->next_request, dev->cpu, period, difference);
 	if(data->next_request && data->next_request < 100000){
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = data->next_request;
