@@ -375,7 +375,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->before = after;
 	}
 
-	printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, difference = %ld\n", data->next_request, dev->cpu, period, difference);
+	printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %ul, before = %ul, difference = %ld\n", data->next_request, ttwups, data->last_ttwu_counter, dev->cpu, period, difference);
 	if(data->next_request && data->next_request < 100000){
 		/* update the throughput data */
 		data->throughputs[data->throughput_ptr++] = data->next_request;
