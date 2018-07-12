@@ -343,7 +343,7 @@ struct expert residency_expert = {
 void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	do_gettimeofday(&data->before);
-	data->last_ttwu_counter = sched_get_nr_ttwu();
+	data->last_ttwu_counter = sched_get_nr_ttwu(dev->cpu);
 }
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
@@ -360,14 +360,14 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 
 	if(period >= 500000)
 	{
-		ttwups = sched_get_nr_ttwu();
+		ttwups = sched_get_nr_ttwu(dev->cpu);
 		printk_ratelimited("sampling ttwus now= %ul   before = %ul cpu(%u)\n",ttwups, data->last_ttwu_counter, dev->cpu);
 		if(!ttwups)
 			return -1;
 		difference = ttwups - data->last_ttwu_counter;
 		if(difference == 0)
 		{
-			printk_ratelimited("Error! rate is zero, period = %ld, difference = %ld\n", period, difference);
+			printk_ratelimited("Error! rate is zero, period = %ld, ttwus now= %ul, before = %ul difference = %ld\n", period, ttwups, data->last_ttwu_counter, difference);
 			return -1;
 		}
 		data->next_request = div_u64(period,difference);

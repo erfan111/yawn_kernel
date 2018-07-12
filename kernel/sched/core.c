@@ -8707,9 +8707,9 @@ int get_ywn_tasks_woke()
 	return rq->ywn_tasks_woke;
 }
 
-unsigned int sched_get_nr_ttwu()
+unsigned int sched_get_nr_ttwu(unsigned int cpu)
 {
-	struct rq *rq = this_rq();
+	struct rq *rq = cpu_rq(cpu);
 	return rq->ttwu_count;
 }
 //
