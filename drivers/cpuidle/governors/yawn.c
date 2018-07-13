@@ -284,9 +284,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-//	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
-//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
+	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
+		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -367,7 +367,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			return -1;
 		}
 		data->next_request = div_u64(period,difference);
-		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
+//		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
 	}
