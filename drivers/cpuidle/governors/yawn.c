@@ -286,9 +286,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-//	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
-//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
+	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
+		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -379,9 +379,9 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //		data->throughputs[data->throughput_ptr++] = data->next_request;
 //		if(data->throughput_ptr >= INTERVALS)
 //			data->throughput_ptr = 0;
-		if(data->next_request < 200){
-			return -1;
-		}
+//		if(data->next_request < 200){
+//			return -1;
+//		}
 		data->throughput_req = 1;
 //		printk_ratelimited("network expert: we predict next request= %u\n", data->next_request);
 		return data->next_request;
