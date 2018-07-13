@@ -278,11 +278,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 				return;
 			}
 			data->weights[expertptr->id] /= floor;
-			if(!data->weights[expertptr->id])
+			if(data->weights[expertptr->id] < 50)
 			{
-				for(i = 0 ;i < ACTIVE_EXPERTS; i++)
-					data->weights[i] = INITIAL_WEIGHT;
-				break;
+				data->weights[expertptr->id] = 50;
 			}
 		}
 	}
@@ -369,7 +367,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			return -1;
 		}
 		data->next_request = div_u64(period,difference);
-		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
+//		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
 	}
