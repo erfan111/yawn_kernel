@@ -196,10 +196,13 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(data->throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
-		ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-		hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-		data->timer_active = 1;
-		reset_ywn_tasks_woke();
+		if(yawn_timer_interval > 5)
+		{
+			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+			data->timer_active = 1;
+			reset_ywn_tasks_woke();
+		}
 	}
 
 	return data->last_state_idx;
@@ -242,10 +245,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	data->measured_us = measured_us;
 
 	if(data->will_wake_with_timer)
-	{
 		data->will_wake_with_timer = 0;
-		return;
-	}
 
 	if(data->attendees > 1)
 	{
