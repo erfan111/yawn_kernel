@@ -146,11 +146,6 @@
 static DEFINE_MUTEX(proto_list_mutex);
 static LIST_HEAD(proto_list);
 
-// =erfan
-
-EXPORT_SYMBOL(my_counter);
-//
-
 /**
  * sk_ns_capable - General socket capability test
  * @sk: Socket to use a capability on or through
@@ -2322,11 +2317,6 @@ static void sock_def_error_report(struct sock *sk)
 	rcu_read_unlock();
 }
 
-
-// =erfan
-
-
-//
 
 static void sock_def_readable(struct sock *sk)
 {
