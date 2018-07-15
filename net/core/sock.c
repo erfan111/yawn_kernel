@@ -2324,15 +2324,7 @@ static void sock_def_error_report(struct sock *sk)
 
 
 // =erfan
-static void inc_my_counter()
-{
-	my_counter++;
-}
 
-static unsigned int get_my_counter()
-{
-	return my_counter;
-}
 
 //
 
