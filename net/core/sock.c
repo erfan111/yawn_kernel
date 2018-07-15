@@ -2326,6 +2326,7 @@ static void sock_def_readable(struct sock *sk)
 	wq = rcu_dereference(sk->sk_wq);
 	// =erfan
 	inc_my_counter();
+	printk_ratelimited("from sockdefreadable %u\n", get_my_counter());
 	//
 	if (wq_has_sleeper(wq))
 		wake_up_interruptible_sync_poll(&wq->wait, POLLIN | POLLPRI |
