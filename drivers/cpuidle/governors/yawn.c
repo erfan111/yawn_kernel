@@ -63,6 +63,8 @@ struct yawn_device {
 	struct timeval before;
 	unsigned long last_ttwu_counter;
 	unsigned int next_request;
+	unsigned int my_counter;
+
 	// Timer Expert Data
 	unsigned int	bucket;
 	unsigned int	correction_factor[BUCKETS];
@@ -370,6 +372,12 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
+
+		///
+		max = my_counter;
+		thresh = my_counter - data->my_counter;
+		printk_ratelimited("rate from sock.c = %u\n", (thresh / period));
+		data->my_counter = max;
 	}
 
 	if(data->next_request && data->next_request < 100000){
