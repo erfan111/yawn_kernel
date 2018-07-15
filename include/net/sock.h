@@ -70,7 +70,7 @@
 #include <linux/net_tstamp.h>
 
 // =erfan
-unsigned int my_counter = 0;
+static unsigned int my_counter = 0;
 static inline void inc_my_counter(void)
 {
 	my_counter++;
