@@ -17,6 +17,7 @@
 #include <linux/module.h>
 #include <linux/random.h>
 #include <linux/list_sort.h>
+#include <net/sock.h>
 #include "exp.h"
 
 #define EXPERT_NAME_LEN 15

@@ -147,7 +147,6 @@ static DEFINE_MUTEX(proto_list_mutex);
 static LIST_HEAD(proto_list);
 
 // =erfan
-extern unsigned int my_counter = 0;
 
 EXPORT_SYMBOL(my_counter);
 //

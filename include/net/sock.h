@@ -69,6 +69,11 @@
 #include <net/tcp_states.h>
 #include <linux/net_tstamp.h>
 
+// =erfan
+extern unsigned int my_counter = 0;
+
+//
+
 struct cgroup;
 struct cgroup_subsys;
 #ifdef CONFIG_NET
