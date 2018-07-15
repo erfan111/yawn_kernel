@@ -2322,6 +2322,20 @@ static void sock_def_error_report(struct sock *sk)
 	rcu_read_unlock();
 }
 
+
+// =erfan
+static void inc_my_counter()
+{
+	my_counter++;
+}
+
+static unsigned int get_my_counter()
+{
+	return my_counter;
+}
+
+//
+
 static void sock_def_readable(struct sock *sk)
 {
 	struct socket_wq *wq;

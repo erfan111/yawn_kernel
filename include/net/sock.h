@@ -72,15 +72,9 @@
 // =erfan
 unsigned int my_counter = 0;
 
-static inline void inc_my_counter()
-{
-	my_counter++;
-}
+static void inc_my_counter(void);
 
-static inline unsigned int get_my_counter()
-{
-	return my_counter;
-}
+static unsigned int get_my_counter(void);
 
 //
 
