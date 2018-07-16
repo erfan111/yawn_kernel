@@ -2008,8 +2008,7 @@ SYSCALL_DEFINE4(epoll_wait, int, epfd, struct epoll_event __user *, events,
 
 	// =erfan
 	if(error > 0){
-		struct rq *rq = this_rq();
-		rq->epoll_events += error;
+		sched_inc_epoll_events(error);
 	}
 
 	//

@@ -8732,6 +8732,12 @@ unsigned long sched_get_epoll_events()
 	return rq->epoll_events;
 }
 
+void sched_inc_epoll_events(int cnt)
+{
+	struct rq *rq = this_rq();
+	rq->epoll_events += cnt;
+}
+
 //
 
 void dump_cpu_task(int cpu)
