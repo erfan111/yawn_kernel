@@ -3227,4 +3227,9 @@ extern void reset_ywn_tasks_woke(void);
 extern int get_ywn_tasks_woke(void);
 
 extern unsigned int sched_get_nr_ttwu(unsigned int cpu);
+
+extern unsigned int sched_get_net_reqs();
+
+extern void sched_inc_net_reqs();
+
 //

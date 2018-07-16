@@ -7558,6 +7558,7 @@ void __init sched_init(void)
 		atomic_set(&rq->nr_iowait, 0);
 		// =e
 		atomic_set(&rq->nr_network_iowait, 0);
+		rq->network_req = 0;
 		//
 	}
 
@@ -8711,6 +8712,18 @@ unsigned int sched_get_nr_ttwu(unsigned int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
 	return rq->ttwu_count;
+}
+
+void sched_inc_net_reqs()
+{
+	struct rq *rq = cpu_rq(0);
+	rq->network_req++;
+}
+
+unsigned int sched_get_net_reqs()
+{
+	struct rq *rq = cpu_rq(0);
+	return rq->network_req;
 }
 //
 

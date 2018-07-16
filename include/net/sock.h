@@ -69,19 +69,6 @@
 #include <net/tcp_states.h>
 #include <linux/net_tstamp.h>
 
-// =erfan
-static unsigned int my_counter = 0;
-static inline void inc_my_counter(void)
-{
-	my_counter++;
-}
-static inline void get_my_counter(int *val)
-{
-	*val = my_counter;
-}
-EXPORT_SYMBOL(get_my_counter);
-//
-
 struct cgroup;
 struct cgroup_subsys;
 #ifdef CONFIG_NET
