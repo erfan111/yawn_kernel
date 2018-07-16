@@ -381,7 +381,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			data->global_rate = 0;
 		data->my_counter = max;
 	}
-	printk_ratelimited("network expert: core(%u) next request= %u, global = %u, div = %u\n", dev->cpu, data->next_request, data->global_rate, data->next_request >> 3);
+	printk_ratelimited("network expert: core(%u) next request= %u, global = %u, div = %u\n", dev->cpu, data->next_request, data->global_rate, data->next_request/8);
 
 	if(data->next_request && data->next_request < 100000 && abs(data->global_rate - data->next_request) < 500){
 		/* update the throughput data */
@@ -393,12 +393,13 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //		}
 		if(data->next_request > 200)
 			data->strict_latency = 1;
-		data->next_request = data->next_request >> 3;
-		if(data->next_request != 0)
+		if(data->next_request / 8 != 0)
 		{
 			data->throughput_req = 1;
-			return data->next_request;
+			return data->next_request / 8;
 		}
+		else
+			return data->next_request;
 	}
 
 
