@@ -76,9 +76,9 @@ static inline void inc_my_counter(void)
 	my_counter++;
 }
 
-static inline unsigned int get_my_counter(void)
+static inline void get_my_counter(int *val)
 {
-	return my_counter;
+	*val = my_counter;
 }
 
 //
