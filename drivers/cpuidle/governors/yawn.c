@@ -395,7 +395,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			data->strict_latency = 1;
 		data->next_request = data->next_request >> 3;
 		printk_ratelimited("network expert: we predict next request= %u\n", data->next_request);
-		if(data->next_request)
+		if(data->next_request != 0)
 		{
 			data->throughput_req = 1;
 			return data->next_request;
