@@ -361,15 +361,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(period >= 500000)
 	{
 		ttwups = sched_get_nr_ttwu(dev->cpu);
-		//printk_ratelimited("sampling ttwus now= %lu   before = %lu cpu(%u)\n",ttwups, data->last_ttwu_counter, dev->cpu);
 		if(!ttwups)
 			return -1;
 		difference = ttwups - data->last_ttwu_counter;
 		if(difference == 0)
-		{
-			//printk_ratelimited("Error! rate is zero, period = %lu, ttwus now= %lu, before = %lu difference = %lu\n", period, ttwups, data->last_ttwu_counter, difference);
 			return -1;
-		}
 		data->next_request = div_u64(period,difference);
 //		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
@@ -381,9 +377,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		if(thresh > 0){
 			data->global_rate = div_u64(period,thresh);
 		}
+		else
+			data->global_rate = 0;
 		data->my_counter = max;
 	}
-	printk_ratelimited("network expert: next request= %u, global = %u, div = %u\n", data->next_request, data->global_rate, data->next_request >> 3);
+	printk_ratelimited("network expert: core(%u) next request= %u, global = %u, div = %u\n", dev->cpu, data->next_request, data->global_rate, data->next_request >> 3);
 
 	if(data->next_request && data->next_request < 100000 && abs(data->global_rate - data->next_request) < 500){
 		/* update the throughput data */
