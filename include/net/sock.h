@@ -70,17 +70,17 @@
 #include <linux/net_tstamp.h>
 
 // =erfan
-static unsigned int my_counter = 0;
+unsigned int my_counter = 0;
+EXPORT_SYMBOL(my_counter);
 static inline void inc_my_counter(void)
 {
 	my_counter++;
 }
-
 static inline void get_my_counter(int *val)
 {
 	*val = my_counter;
 }
-
+EXPORT_SYMBOL(get_my_counter);
 //
 
 struct cgroup;

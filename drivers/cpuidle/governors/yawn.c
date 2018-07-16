@@ -33,6 +33,8 @@
 #define DECAY 8
 #define MAX_INTERESTING 50000
 
+extern unsigned int get_my_counter(int *val)
+
 // ######################## Start of Data definitions ##############################################
 
 struct yawn_device {
