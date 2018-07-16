@@ -196,17 +196,17 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-//	if(data->throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
-//	{
-//		yawn_timer_interval = data->predicted_us - exit_latency;
-//		if(yawn_timer_interval > 5)
-//		{
-//			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-//			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-//			data->timer_active = 1;
-//			reset_ywn_tasks_woke();
-//		}
-//	}
+	if(data->throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
+	{
+		yawn_timer_interval = data->predicted_us - exit_latency;
+		if(yawn_timer_interval > 5)
+		{
+			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+			data->timer_active = 1;
+			reset_ywn_tasks_woke();
+		}
+	}
 
 	return data->last_state_idx;
 }
@@ -383,7 +383,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->my_counter = max;
 	}
 
-	if(data->next_request && data->next_request < 100000 && abs(global_rate - data->next_request) < 300){
+	if(data->next_request && data->next_request < 100000 && abs(global_rate - data->next_request) < 500){
 		/* update the throughput data */
 //		data->throughputs[data->throughput_ptr++] = data->next_request;
 //		if(data->throughput_ptr >= INTERVALS)
@@ -394,8 +394,10 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->throughput_req = 1;
 		if(data->next_request > 200)
 			data->strict_latency = 1;
-//		printk_ratelimited("network expert: we predict next request= %u\n", data->next_request);
-		return data->next_request;
+		data->next_request /= 10;
+		//		printk_ratelimited("network expert: we predict next request= %u\n", data->next_request);
+		if(data->next_request)
+			return data->next_request;
 	}
 
 
