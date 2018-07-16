@@ -65,6 +65,7 @@ struct yawn_device {
 	unsigned long last_ttwu_counter;
 	unsigned int next_request;
 	unsigned int my_counter;
+	unsigned int global_rate;
 
 	// Timer Expert Data
 	unsigned int	bucket;
@@ -351,7 +352,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	unsigned long ttwups, period, difference ;
 	struct timeval after, time_diff;
 	int i, divisor;
-	unsigned int max, thresh, global_rate = 0;
+	unsigned int max, thresh;
 	uint64_t avg, stddev;
 	do_gettimeofday(&after);
 	period = after.tv_sec * 1000000 + after.tv_usec;
@@ -378,13 +379,13 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		max = sched_get_net_reqs();
 		thresh = max - data->my_counter;
 		if(thresh > 0){
-			global_rate = div_u64(period,thresh);
+			data->global_rate = div_u64(period,thresh);
 		}
 		data->my_counter = max;
 	}
-	printk_ratelimited("network expert: next request= %u, global = %u, div = %u\n", data->next_request, global_rate, data->next_request >> 3);
+	printk_ratelimited("network expert: next request= %u, global = %u, div = %u\n", data->next_request, data->global_rate, data->next_request >> 3);
 
-	if(data->next_request && data->next_request < 100000 && abs(global_rate - data->next_request) < 500){
+	if(data->next_request && data->next_request < 100000 && abs(data->global_rate - data->next_request) < 500){
 		/* update the throughput data */
 //		data->throughputs[data->throughput_ptr++] = data->next_request;
 //		if(data->throughput_ptr >= INTERVALS)
