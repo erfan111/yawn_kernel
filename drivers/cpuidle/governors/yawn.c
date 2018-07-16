@@ -375,9 +375,10 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->before = after;
 
 		///
-//		max = get_my_counter();
-//		thresh = my_counter - data->my_counter;
-		printk_ratelimited("sched rate core %u from core.c = %d\n", dev->cpu, get_ywn_tasks_woke());
+		max = get_my_counter();
+		thresh = max - data->my_counter;
+		if(thresh > 0)
+			printk_ratelimited("sock rate core %u from yawn = %d\n", dev->cpu, div_u64(period/difference));
 		data->my_counter = max;
 	}
 

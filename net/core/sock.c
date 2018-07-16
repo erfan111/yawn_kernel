@@ -2331,14 +2331,10 @@ static void sock_def_readable(struct sock *sk)
 	wq = rcu_dereference(sk->sk_wq);
 	// =erfan
 	inc_my_counter();
-	printk_ratelimited("from sockdefreadable total= %u has sleeper=%u\n", get_my_counter(), has_s);
-
+	//
 	if (wq_has_sleeper(wq))
-	{
 		wake_up_interruptible_sync_poll(&wq->wait, POLLIN | POLLPRI |
 						POLLRDNORM | POLLRDBAND);
-		has_s++;
-	}
 	sk_wake_async(sk, SOCK_WAKE_WAITD, POLL_IN);
 	rcu_read_unlock();
 }

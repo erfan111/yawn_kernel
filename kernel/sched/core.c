@@ -8704,7 +8704,7 @@ void reset_ywn_tasks_woke()
 int get_ywn_tasks_woke()
 {
 	struct rq *rq = this_rq();
-	return rq->nr_switches;
+	return rq->ywn_tasks_woke;
 }
 
 unsigned int sched_get_nr_ttwu(unsigned int cpu)
