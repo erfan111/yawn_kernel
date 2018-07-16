@@ -351,7 +351,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	unsigned long ttwups, period, difference ;
 	struct timeval after, time_diff;
 	int i, divisor;
-	unsigned int max, thresh;
+	unsigned int max, thresh, global_rate = 0;
 	uint64_t avg, stddev;
 	do_gettimeofday(&after);
 	period = after.tv_sec * 1000000 + after.tv_usec;
@@ -377,12 +377,13 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		///
 		max = sched_get_net_reqs();
 		thresh = max - data->my_counter;
-		if(thresh > 0)
-			printk_ratelimited("sock rate core %u from yawn = %d\n", dev->cpu, div_u64(period,thresh));
+		if(thresh > 0){
+			global_rate = div_u64(period,thresh);
+		}
 		data->my_counter = max;
 	}
 
-	if(data->next_request && data->next_request < 100000){
+	if(data->next_request && data->next_request < 100000 && abs(global_rate - data->next_request) < 300){
 		/* update the throughput data */
 //		data->throughputs[data->throughput_ptr++] = data->next_request;
 //		if(data->throughput_ptr >= INTERVALS)
@@ -391,6 +392,8 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //			return -1;
 //		}
 		data->throughput_req = 1;
+		if(data->next_request > 200)
+			data->strict_latency = 1;
 //		printk_ratelimited("network expert: we predict next request= %u\n", data->next_request);
 		return data->next_request;
 	}
