@@ -33,8 +33,7 @@
 #define DECAY 8
 #define MAX_INTERESTING 50000
 
-extern unsigned int get_my_counter(int *val);
-
+static unsigned int my_counter;
 // ######################## Start of Data definitions ##############################################
 
 struct yawn_device {
@@ -378,10 +377,10 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 
 		///
 		max = sched_get_net_reqs();
-		thresh = max - data->my_counter;
+		thresh = max - my_counter;
 		if(thresh > 0)
 			printk_ratelimited("sock rate core %u from yawn = %d\n", dev->cpu, div_u64(period,difference));
-		data->my_counter = max;
+		my_counter = max;
 	}
 
 	if(data->next_request && data->next_request < 100000){
