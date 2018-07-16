@@ -2006,6 +2006,14 @@ SYSCALL_DEFINE4(epoll_wait, int, epfd, struct epoll_event __user *, events,
 	/* Time to fish for events ... */
 	error = ep_poll(ep, events, maxevents, timeout);
 
+	// =erfan
+	if(error > 0){
+		struct rq *rq = this_rq();
+		rq->epoll_events += error;
+	}
+
+	//
+
 error_fput:
 	fdput(f);
 	return error;

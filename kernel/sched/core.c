@@ -8725,6 +8725,13 @@ unsigned int sched_get_net_reqs()
 	struct rq *rq = cpu_rq(0);
 	return rq->network_req;
 }
+
+unsigned long sched_get_epoll_events()
+{
+	struct rq *rq = this_rq();
+	return rq->epoll_events;
+}
+
 //
 
 void dump_cpu_task(int cpu)

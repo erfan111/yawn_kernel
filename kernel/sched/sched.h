@@ -626,6 +626,7 @@ struct rq {
 	atomic_t nr_network_iowait;
 	unsigned int ywn_tasks_woke;
 	unsigned int network_req;
+	unsigned long epoll_events;
 	//
 
 #ifdef CONFIG_SMP

@@ -3232,4 +3232,6 @@ extern unsigned int sched_get_net_reqs(void);
 
 extern void sched_inc_net_reqs(void);
 
+extern unsigned long sched_get_epoll_events(void);
+
 //

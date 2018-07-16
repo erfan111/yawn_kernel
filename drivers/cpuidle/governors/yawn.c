@@ -66,6 +66,8 @@ struct yawn_device {
 	unsigned int next_request;
 	unsigned int my_counter;
 	unsigned int global_rate;
+	unsigned long epoll_events;
+	unsigned long event_rate;
 
 	// Timer Expert Data
 	unsigned int	bucket;
@@ -349,7 +351,7 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned long ttwups, period, difference ;
+	unsigned long ttwups, period, difference, epoll_events, epl_diff ;
 	struct timeval after, time_diff;
 	int i, divisor;
 	unsigned int max, thresh;
@@ -360,6 +362,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 
 	if(period >= 500000)
 	{
+		// 1
 		ttwups = sched_get_nr_ttwu(dev->cpu);
 		if(!ttwups)
 			return -1;
@@ -371,7 +374,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
 
-		///
+		// 2
 		max = sched_get_net_reqs();
 		thresh = max - data->my_counter;
 		if(thresh > 0){
@@ -380,8 +383,18 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		else
 			data->global_rate = 0;
 		data->my_counter = max;
+
+		// 3
+		epoll_events = sched_get_epoll_events();
+		epl_diff = epoll_events - data->epoll_events;
+		if(epl_diff)
+			data->event_rate = div_u64(period, epl_diff);
+		else
+			data->event_rate;
+		data->epoll_events = epoll_events;
+
 	}
-	printk_ratelimited("network expert: core(%u) next request= %u, global = %u, div = %u\n", dev->cpu, data->next_request, data->global_rate, data->next_request/8);
+	printk_ratelimited("net expert: core(%u) ttwu rate= %u, global = %u, div = %u, event rate = %lu\n", dev->cpu, data->next_request, data->global_rate, data->next_request/8, data->event_rate);
 
 	if(data->next_request && data->next_request < 100000 && abs(data->global_rate - data->next_request) < 500){
 		/* update the throughput data */
