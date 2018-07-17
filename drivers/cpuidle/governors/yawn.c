@@ -401,13 +401,8 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			data->strict_latency = 1;
 
 		data->throughput_req = 1;
-		if(abs(data->next_request - data->global_rate) < 400)
-		{
-			if(data->next_request / 8 != 0)
-				return data->next_request / 8;
-			else
-				return data->next_request;
-		}
+		if((data->next_request - data->event_rate) < 0)
+			return data->next_request;
 		return data->event_rate;
 	}
 
