@@ -290,9 +290,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
-		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
+//	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
+//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -394,65 +394,22 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->epoll_events = epoll_events;
 
 	}
-	printk_ratelimited("net expert: core(%u) ttwu rate= %u, global = %u, div = %u, event rate = %lu\n", dev->cpu, data->next_request, data->global_rate, data->next_request/8, data->event_rate);
+//	printk_ratelimited("net expert: core(%u) ttwu rate= %u, global = %u, div = %u, event rate = %lu\n", dev->cpu, data->next_request, data->global_rate, data->next_request/8, data->event_rate);
 
-	if(data->next_request && data->next_request < 100000 && abs(data->global_rate - data->next_request) < 500){
-		/* update the throughput data */
-//		data->throughputs[data->throughput_ptr++] = data->next_request;
-//		if(data->throughput_ptr >= INTERVALS)
-//			data->throughput_ptr = 0;
-//		if(data->next_request < 200){
-//			return -1;
-//		}
-		if(data->next_request > 200)
+	if(data->epoll_events && data->epoll_events < 100000){
+		if(data->epoll_events > 200)
 			data->strict_latency = 1;
-		if(data->next_request / 8 != 0)
+
+		data->throughput_req = 1;
+		if(abs(data->next_request - data->global_rate) < 400)
 		{
-			data->throughput_req = 1;
-			return data->next_request / 8;
+			if(data->next_request / 8 != 0)
+				return data->next_request / 8;
+			else
+				return data->next_request;
 		}
-		else
-			return data->next_request;
+		return data->epoll_events;
 	}
-
-
-//	thresh = UINT_MAX; /* Discard outliers above this value */
-//
-//	max = 0;
-//	avg = 0;
-//	divisor = 0;
-//	for (i = 0; i < INTERVALS; i++) {
-//		unsigned int value = data->throughputs[i];
-//		if (value <= thresh) {
-//			avg += value;
-//			divisor++;
-//			if (value > max)
-//				max = value;
-//		}
-//	}
-//	if (divisor == INTERVALS)
-//		avg >>= INTERVAL_SHIFT;
-//	else
-//		do_div(avg, divisor);
-//
-//	/* Then try to determine standard deviation */
-//	stddev = 0;
-//	for (i = 0; i < INTERVALS; i++) {
-//		unsigned int value = data->throughputs[i];
-//		if (value <= thresh) {
-//			int64_t diff = value - avg;
-//			stddev += diff * diff;
-//		}
-//	}
-//	if (divisor == INTERVALS)
-//		stddev >>= INTERVAL_SHIFT;
-//	else
-//		do_div(stddev, divisor);
-//	if(avg)
-//	{
-//		printk_ratelimited("network expert averaging= %u\n", avg);
-//		return avg;
-//	}
 
 	return -1;
 }
