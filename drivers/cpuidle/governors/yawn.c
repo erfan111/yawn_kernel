@@ -392,12 +392,12 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		else
 			data->event_rate;
 		data->epoll_events = epoll_events;
-		printk_ratelimited("net expert: core(%u) prev==%lu  now=%lu event rate = %lu\n", dev->cpu, data->epoll_events, epoll_events, data->event_rate);
+//		printk_ratelimited("net expert: core(%u) prev==%lu  now=%lu event rate = %lu\n", dev->cpu, data->epoll_events, epoll_events, data->event_rate);
 
 	}
 
-	if(data->epoll_events && data->epoll_events < 100000){
-		if(data->epoll_events > 200)
+	if(data->event_rate && data->event_rate < 100000){
+		if(data->event_rate > 200)
 			data->strict_latency = 1;
 
 		data->throughput_req = 1;
@@ -408,7 +408,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			else
 				return data->next_request;
 		}
-		return data->epoll_events;
+		return data->event_rate;
 	}
 
 	return -1;
