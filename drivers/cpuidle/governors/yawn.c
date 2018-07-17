@@ -38,7 +38,6 @@
 struct yawn_device {
 	// Yawn Global Data
 	int		last_state_idx;
-	unsigned long	index;
 	unsigned int	next_timer_us;
 	unsigned int	predicted_us;
 	unsigned int	measured_us;
@@ -52,15 +51,12 @@ struct yawn_device {
 	unsigned int weights[ACTIVE_EXPERTS];
 	int predictions[ACTIVE_EXPERTS];
 	int former_predictions[ACTIVE_EXPERTS];
-	unsigned int weighted_sigma;
 	unsigned int will_wake_with_timer;
 	int strict_latency;
 	int throughput_req;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
-	unsigned int throughputs[INTERVALS];
-	int throughput_ptr;
 	struct timeval before;
 	unsigned long last_ttwu_counter;
 	unsigned int next_request;
@@ -118,12 +114,13 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct expert  *expertptr  = NULL ;
 	int state_count = drv->state_count;
 	// reflect the last residency into experts and yawn
-	if (data->needs_update) {
+	if (data->needs_update && !data->woke_by_timer) {
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
 	data->throughput_req = 0;
 	data->strict_latency = 0;
+	data->woke_by_timer = 0;
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	if(data->timer_active)
@@ -513,7 +510,6 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	register_expert(&timer_expert, data);
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	data->hr_timer.function = &my_hrtimer_callback;
-	data->weighted_sigma = ACTIVE_EXPERTS * INITIAL_WEIGHT;
 	return 0;
 }
 
