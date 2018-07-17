@@ -388,7 +388,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		if(epl_diff)
 			data->event_rate = div_u64(period, epl_diff);
 		else
-			data->event_rate;
+			data->event_rate = 0;
 		data->epoll_events = epoll_events;
 //		printk_ratelimited("net expert: core(%u) prev==%lu  now=%lu event rate = %lu\n", dev->cpu, data->epoll_events, epoll_events, data->event_rate);
 
