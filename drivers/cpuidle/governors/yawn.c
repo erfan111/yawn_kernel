@@ -392,9 +392,9 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		else
 			data->event_rate;
 		data->epoll_events = epoll_events;
+		printk_ratelimited("net expert: core(%u) prev==%lu  now=%lu event rate = %lu\n", dev->cpu, data->epoll_events, epoll_events, data->event_rate);
 
 	}
-//	printk_ratelimited("net expert: core(%u) ttwu rate= %u, global = %u, div = %u, event rate = %lu\n", dev->cpu, data->next_request, data->global_rate, data->next_request/8, data->event_rate);
 
 	if(data->epoll_events && data->epoll_events < 100000){
 		if(data->epoll_events > 200)
