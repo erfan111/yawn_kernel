@@ -21,7 +21,7 @@
 #include "exp.h"
 
 #define EXPERT_NAME_LEN 15
-#define ACTIVE_EXPERTS 2
+#define ACTIVE_EXPERTS 3
 #define INITIAL_WEIGHT 1000
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
@@ -287,9 +287,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-//	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
-//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
+	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
+		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -505,7 +505,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	memset(data, 0, sizeof(struct yawn_device));
 
 	INIT_LIST_HEAD(&expert_list);
-//	register_expert(&residency_expert, data);
+	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
 	register_expert(&timer_expert, data);
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
