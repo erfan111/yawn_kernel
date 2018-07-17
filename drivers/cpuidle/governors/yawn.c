@@ -21,7 +21,7 @@
 #include "exp.h"
 
 #define EXPERT_NAME_LEN 15
-#define ACTIVE_EXPERTS 3
+#define ACTIVE_EXPERTS 2
 #define INITIAL_WEIGHT 1000
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
@@ -505,7 +505,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	memset(data, 0, sizeof(struct yawn_device));
 
 	INIT_LIST_HEAD(&expert_list);
-	register_expert(&residency_expert, data);
+//	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
 	register_expert(&timer_expert, data);
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
