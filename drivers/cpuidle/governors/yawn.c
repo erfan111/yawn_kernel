@@ -41,6 +41,7 @@ struct yawn_device {
 	unsigned int	next_timer_us;
 	unsigned int	predicted_us;
 	unsigned int	measured_us;
+	unsigned int	pending;
 	unsigned int attendees;
 	struct hrtimer hr_timer;
 	int timer_active;
@@ -115,13 +116,17 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct expert  *expertptr  = NULL ;
 	int state_count = drv->state_count;
 	// reflect the last residency into experts and yawn
-	if (data->needs_update && !data->woke_by_timer) {
+
+	if (data->needs_update) {
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
 	}
 	data->throughput_req = 0;
 	data->strict_latency = 0;
 	data->woke_by_timer = 0;
+	data->will_wake_with_timer = 0;
+
+	sched_reset_tasks_woke();
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
 	data->total++;
@@ -247,10 +252,16 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		measured_us -= target->exit_latency;
 	if (measured_us > data->next_timer_us)
 		measured_us = data->next_timer_us;
-	data->measured_us = measured_us;
 
-	if(data->will_wake_with_timer)
-		data->will_wake_with_timer = 0;
+	if(data->woke_by_timer && !sched_get_tasks_woke())
+	{
+		printk_ratelimited("adding pending %u\n", measured_us);
+		data->pending += measured_us;
+		return;
+	}
+	measured_us += data->pending;
+	data->measured_us = measured_us;
+	data->pending = 0;
 
 	if(data->attendees > 1)
 	{
@@ -289,9 +300,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-//	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
-//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
+		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -320,9 +331,7 @@ void residency_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 int residency_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned int ema = data->residency_moving_average;
-	ema = (EXPONENTIAL_FACTOR * ema) + (EXPONENTIAL_FLOOR - EXPONENTIAL_FACTOR) * data->measured_us;
-	ema /= EXPONENTIAL_FLOOR;
-	data->residency_moving_average = ema;
+
 	if(ema < 10)
 		return -1;
 	return ema;
@@ -330,7 +339,10 @@ int residency_expert_select(struct yawn_device *data, struct cpuidle_device *dev
 
 void residency_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us)
 {
-
+	unsigned int ema = data->residency_moving_average;
+	ema = (EXPONENTIAL_FACTOR * ema) + (EXPONENTIAL_FLOOR - EXPONENTIAL_FACTOR) * data->measured_us;
+	ema /= EXPONENTIAL_FLOOR;
+	data->residency_moving_average = ema;
 }
 
 struct expert residency_expert = {

@@ -3216,15 +3216,11 @@ static inline unsigned long rlimit_max(unsigned int limit)
 
 // =e
 
-extern void sched_inc_network_io_waiters(void);
+extern void sched_set_tasks_woke(void);
 
-extern void sched_dec_network_io_waiters(void);
+extern void sched_reset_tasks_woke(void);
 
-extern int sched_get_network_io_waiters(void);
-
-extern void reset_ywn_tasks_woke(void);
-
-extern int get_ywn_tasks_woke(void);
+extern int sched_get_tasks_woke(void);
 
 extern unsigned int sched_get_nr_ttwu(unsigned int cpu);
 

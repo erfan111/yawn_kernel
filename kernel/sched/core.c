@@ -3071,7 +3071,10 @@ pick_next_task(struct rq *rq, struct task_struct *prev)
 		/* assumes fair_sched_class->next == idle_sched_class */
 		if (unlikely(!p))
 			p = idle_sched_class.pick_next_task(rq, prev);
-
+		// =erfan
+		else
+			sched_set_tasks_woke();
+		//
 		return p;
 	}
 
@@ -3081,6 +3084,10 @@ again:
 		if (p) {
 			if (unlikely(p == RETRY_TASK))
 				goto again;
+			// =erfan
+			if(p->sched_class == &fair_sched_class)
+				sched_set_tasks_woke();
+			//
 			return p;
 		}
 	}
@@ -8677,32 +8684,20 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 #endif	/* CONFIG_CGROUP_SCHED */
 
 // =e
-void sched_dec_network_io_waiters()
+
+void sched_set_tasks_woke()
 {
 	struct rq *rq = this_rq();
-	atomic_dec(&rq->nr_network_iowait);
+	rq->ywn_tasks_woke = 1;
 }
 
-void sched_inc_network_io_waiters()
-{
-	struct rq *rq = this_rq();
-	atomic_inc(&rq->nr_network_iowait);
-}
-
-int sched_get_network_io_waiters()
-{
-	struct rq *rq = this_rq();
-	int ret = atomic_read(&rq->nr_network_iowait);
-	return ret;
-}
-
-void reset_ywn_tasks_woke()
+void sched_reset_tasks_woke()
 {
 	struct rq *rq = this_rq();
 	rq->ywn_tasks_woke = 0;
 }
 
-int get_ywn_tasks_woke()
+int sched_get_tasks_woke()
 {
 	struct rq *rq = this_rq();
 	return rq->ywn_tasks_woke;
