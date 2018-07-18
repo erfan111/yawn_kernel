@@ -254,7 +254,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 
 	if(data->woke_by_timer && !sched_get_tasks_woke())
 	{
-		printk_ratelimited("adding pending %u\n", measured_us);
+//		printk_ratelimited("adding pending %u\n", measured_us);
 		data->pending += measured_us;
 		return;
 	}
