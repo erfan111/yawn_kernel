@@ -46,7 +46,8 @@ struct yawn_device {
 	int timer_active;
 	int woke_by_timer;
 	int needs_update;
-	int inmature;
+	unsigned long inmature;
+	unsigned long total;
 	int expert_id_counter;
 	unsigned int weights[ACTIVE_EXPERTS];
 	int predictions[ACTIVE_EXPERTS];
@@ -123,6 +124,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->woke_by_timer = 0;
 	//net_io_waiters = sched_get_network_io_waiters();
 	// did an inmature wake up happen? turn off the timer
+	data->total++;
 	if(data->timer_active)
 	{
 		hrtimer_cancel(&data->hr_timer);
@@ -287,9 +289,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
+	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
 		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us);
+		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -359,12 +361,13 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	{
 		// 1
 		ttwups = sched_get_nr_ttwu(dev->cpu);
-		if(!ttwups)
-			return -1;
+//		if(!ttwups)
+//			return -1;
 		difference = ttwups - data->last_ttwu_counter;
 		if(difference == 0)
-			return -1;
-		data->next_request = div_u64(period,difference);
+			data->next_request = 0;
+		else
+			data->next_request = div_u64(period,difference);
 //		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
