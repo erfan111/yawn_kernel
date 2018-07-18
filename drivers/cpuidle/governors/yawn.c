@@ -211,7 +211,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
 			data->timer_active = 1;
-			reset_ywn_tasks_woke();
 		}
 	}
 
