@@ -201,7 +201,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(data->throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
-		if(yawn_timer_interval > 5)
+		if(yawn_timer_interval > 10)
 		{
 			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
@@ -323,6 +323,8 @@ int residency_expert_select(struct yawn_device *data, struct cpuidle_device *dev
 	ema = (EXPONENTIAL_FACTOR * ema) + (EXPONENTIAL_FLOOR - EXPONENTIAL_FACTOR) * data->measured_us;
 	ema /= EXPONENTIAL_FLOOR;
 	data->residency_moving_average = ema;
+	if(ema < 10)
+		return -1;
 	return ema;
 }
 
