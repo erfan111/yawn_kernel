@@ -247,6 +247,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	unsigned int floor = 1, i;
 	int last_idx = data->last_state_idx;
 	struct cpuidle_state *target = &drv->states[last_idx];
+	printk_ratelimited("yawn_updt state %d, residency= %u, exit = %u, timer = %u\n", last_idx, measured_us, target->exit_latency, data->next_timer_us);
 	if (measured_us > target->exit_latency)
 		measured_us -= target->exit_latency;
 	if (measured_us > data->next_timer_us)
