@@ -247,7 +247,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	unsigned int floor = 1, i;
 	int last_idx = data->last_state_idx;
 	struct cpuidle_state *target = &drv->states[last_idx];
-	printk_ratelimited("yawn_updt cpu %d state %d, residency= %u, exit = %u, timer = %u\n",dev->cpu, last_idx, measured_us, target->exit_latency, data->next_timer_us);
+//	printk_ratelimited("yawn_updt cpu %d state %d, residency= %u, exit = %u, timer = %u\n",dev->cpu, last_idx, measured_us, target->exit_latency, data->next_timer_us);
 	if (measured_us > target->exit_latency)
 		measured_us -= target->exit_latency;
 	else // we don't want any inaccuracies
@@ -267,9 +267,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	measured_us += data->pending;
 	data->measured_us = measured_us;
 	data->pending = 0;
-printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
-		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+//printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
+//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 
 	if(data->attendees > 1)
 	{
