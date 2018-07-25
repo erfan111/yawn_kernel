@@ -186,8 +186,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 * Find the idle state with the lowest power while satisfying
 	 * our constraints.
 	 */
-	if(data->strict_latency)
-		state_count--;
+//	if(data->strict_latency)
+//		state_count--;
 
 	for (i = CPUIDLE_DRIVER_STATE_START; i < state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
@@ -408,11 +408,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //		printk_ratelimited("net expert: core(%u) prev==%lu  now=%lu event rate = %lu\n", dev->cpu, data->epoll_events, epoll_events, data->event_rate);
 
 	}
-	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
+//	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
 	rate_sum = data->event_rate + data->next_request;
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
-	if(interarrival < 100000){
+	if(interarrival && interarrival < 100000){
 		if(interarrival > 200)
 			data->strict_latency = 1;
 
