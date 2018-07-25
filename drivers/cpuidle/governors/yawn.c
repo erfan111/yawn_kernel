@@ -21,7 +21,7 @@
 #include "exp.h"
 
 #define EXPERT_NAME_LEN 15
-#define ACTIVE_EXPERTS 2
+#define ACTIVE_EXPERTS 3
 #define INITIAL_WEIGHT 1000
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
@@ -266,9 +266,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	measured_us += data->pending;
 	data->measured_us = measured_us;
 	data->pending = 0;
-//printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
-//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
+		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 
 	if(data->attendees > 1)
 	{
@@ -371,7 +371,7 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned long ttwups, period, difference, epoll_events, epl_diff ;
+	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
 	struct timeval after;
 	unsigned int max, thresh;
 	do_gettimeofday(&after);
@@ -385,10 +385,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //		if(!ttwups)
 //			return -1;
 		difference = ttwups - data->last_ttwu_counter;
-		if(difference == 0)
-			data->next_request = 0;
-		else
-			data->next_request = div_u64(period,difference);
+		data->next_request = difference*2;
 //		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
@@ -406,33 +403,22 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		// 3
 		epoll_events = sched_get_epoll_events();
 		epl_diff = epoll_events - data->epoll_events;
-		if(epl_diff)
-			data->event_rate = div_u64(period, epl_diff);
-		else
-			data->event_rate = 0;
+		data->event_rate = epl_diff*2;
 		data->epoll_events = epoll_events;
 //		printk_ratelimited("net expert: core(%u) prev==%lu  now=%lu event rate = %lu\n", dev->cpu, data->epoll_events, epoll_events, data->event_rate);
 
 	}
-
-	if(data->event_rate && data->event_rate < 100000){
-		if(data->event_rate > 200)
+	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
+	rate_sum = data->event_rate + data->next_request;
+	if(rate_sum)
+		interarrival = div_u64(1000000, rate_sum);
+	if(interarrival < 100000){
+		if(interarrival > 200)
 			data->strict_latency = 1;
 
 		data->throughput_req = 1;
-		if((data->next_request - data->event_rate) < 0)
-			return data->next_request;
-		return data->event_rate;
+		return interarrival;
 	}
-
-	if(data->next_request && data->next_request < 100000){
-		if(data->next_request > 200)
-			data->strict_latency = 1;
-
-		data->throughput_req = 1;
-		return data->next_request;
-	}
-
 	return -1;
 }
 
@@ -539,7 +525,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
-//	register_expert(&timer_expert, data);
+	register_expert(&timer_expert, data);
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	data->hr_timer.function = &my_hrtimer_callback;
 	return 0;
