@@ -21,7 +21,7 @@
 #include "exp.h"
 
 #define EXPERT_NAME_LEN 15
-#define ACTIVE_EXPERTS 3
+#define ACTIVE_EXPERTS 2
 #define INITIAL_WEIGHT 1000
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
@@ -186,8 +186,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 * Find the idle state with the lowest power while satisfying
 	 * our constraints.
 	 */
-//	if(data->strict_latency)
-//		state_count--;
+	if(data->strict_latency)
+		state_count--;
 
 	for (i = CPUIDLE_DRIVER_STATE_START; i < state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
@@ -266,9 +266,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	measured_us += data->pending;
 	data->measured_us = measured_us;
 	data->pending = 0;
-printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
-		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+//printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
+//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 
 	if(data->attendees > 1)
 	{
@@ -525,7 +525,7 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
-	register_expert(&timer_expert, data);
+	//register_expert(&timer_expert, data);
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	data->hr_timer.function = &my_hrtimer_callback;
 	return 0;
