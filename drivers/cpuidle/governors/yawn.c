@@ -412,9 +412,9 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	rate_sum = data->event_rate + data->next_request;
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
-	if(interarrival && interarrival < 100000){
-		if(interarrival > 200)
-			data->strict_latency = 1;
+	if(interarrival && interarrival < 10000){
+//		if(interarrival > 200)
+//			data->strict_latency = 1;
 
 		data->throughput_req = 1;
 		return interarrival;
