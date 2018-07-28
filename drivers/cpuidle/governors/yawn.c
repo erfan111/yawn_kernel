@@ -110,7 +110,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	ktime_t ktime;
 	unsigned int exit_latency;
-	unsigned int index = 0, sum = 0, i, yawn_timer_interval;
+	unsigned int index = 0, sum = 0, i;
+	int yawn_timer_interval;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
@@ -127,21 +128,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->will_wake_with_timer = 0;
 
 	sched_reset_tasks_woke();
-	//net_io_waiters = sched_get_network_io_waiters();
-	// did an inmature wake up happen? turn off the timer
 	data->total++;
-	if(data->timer_active)
-	{
-		hrtimer_cancel(&data->hr_timer);
-		data->timer_active = 0;
-		data->inmature++;
-	}
-	// did we wake by yawn timer? then a request might nearly arrive. Go to polling and wait.
-//	if(data->pending)   // =e later need to get from sched_nr_io_waiters
-//	{
-//		data->last_state_idx = 1;
-//		goto out;
-//	}
 	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 	data->attendees = 0;
 //	 query the experts for their delay prediction
@@ -163,7 +150,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		return 1;
 	}
 	data->predicted_us = sum / index;
-//	data->predicted_us +=5;
 //	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->weights[0], data->weights[1], data->predicted_us);
 
 	/*
@@ -203,10 +189,10 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(data->throughput_req && !data->will_wake_with_timer)  // =e later need to get from sched_nr_io_waiters
+	if(data->throughput_req && !data->will_wake_with_timer)
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
-		if(yawn_timer_interval > 10)
+		if(yawn_timer_interval > 5)
 		{
 			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
@@ -231,6 +217,12 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 
 	data->last_state_idx = index;
 	data->needs_update = 1;
+	if(data->timer_active)
+	{
+		hrtimer_cancel(&data->hr_timer);
+		data->timer_active = 0;
+//		data->inmature++;
+	}
 }
 
 /**
