@@ -96,6 +96,7 @@ static void yawn_update(struct cpuidle_driver*, struct cpuidle_device*, struct y
 enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
+//	printk_ratelimited("hrtimer need updt %d\n", data->needs_update);
 	data->timer_active = 0;
 	data->woke_by_timer = 1;
 	return HRTIMER_NORESTART;
@@ -189,17 +190,16 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(data->throughput_req && !data->will_wake_with_timer)
-	{
+	//if(data->throughput_req && !data->will_wake_with_timer)
+	//{
 		yawn_timer_interval = data->predicted_us - exit_latency;
-		if(yawn_timer_interval > 5)
-		{
-			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-			data->timer_active = 1;
-		}
-	}
-out:
+		//if(yawn_timer_interval > 30)
+		//{
+		//	ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+		//	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+		//	data->timer_active = 1;
+		//}
+	//}
 	return data->last_state_idx;
 }
 
@@ -216,13 +216,13 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 
 	data->last_state_idx = index;
-	data->needs_update = 1;
 	if(data->timer_active)
 	{
 		hrtimer_cancel(&data->hr_timer);
 		data->timer_active = 0;
-//		data->inmature++;
+		data->inmature++;
 	}
+	data->needs_update = 1;
 }
 
 /**
@@ -258,9 +258,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	measured_us += data->pending;
 	data->measured_us = measured_us;
 	data->pending = 0;
-//printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
+//printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
 //		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+//		data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 
 	if(data->attendees > 1)
 	{
