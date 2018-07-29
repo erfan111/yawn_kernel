@@ -418,6 +418,10 @@ static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		measured_us = data->next_timer_us;
 	//printk_ratelimited("%u\n", measured_us);
 	/* Update our correction ratio */
+
+	printk_ratelimited("MENU cpu(%u) sys_pred = %u, state=%d, sleep=%u next_timer=%u\n",
+			dev->cpu,data->predicted_us,last_idx, measured_us, data->next_timer_us);
+
 	new_factor = data->correction_factor[data->bucket];
 	new_factor -= new_factor / DECAY;
 

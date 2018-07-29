@@ -119,12 +119,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct expert  *expertptr  = NULL ;
 	int state_count = drv->state_count;
 	// reflect the last residency into experts and yawn
-	if(data->timer_active)
-	{
-		hrtimer_cancel(&data->hr_timer);
-		data->timer_active = 0;
-		data->inmature++;
-	}
+
 	if (data->needs_update) {
 		yawn_update(drv, dev, data);
 		data->needs_update = 0;
@@ -222,6 +217,12 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 
 	data->last_state_idx = index;
+	if(data->timer_active)
+	{
+		hrtimer_cancel(&data->hr_timer);
+		data->timer_active = 0;
+		data->inmature++;
+	}
 	data->needs_update = 1;
 }
 
