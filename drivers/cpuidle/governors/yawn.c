@@ -111,7 +111,7 @@ enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
 	ktime_t ktime;
-	unsigned int exit_latency;
+	unsigned int exit_latency = 0;
 	unsigned int index = 0, sum = 0, i;
 	int yawn_timer_interval;
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
@@ -130,6 +130,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->will_wake_with_timer = 0;
 
 	sched_reset_tasks_woke();
+	data->last_state_idx = CPUIDLE_DRIVER_STATE_START - 1;
 	data->total++;
 	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 	data->attendees = 0;
@@ -191,7 +192,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(data->throughput_req && !data->will_wake_with_timer)
+	if(data->throughput_req && !data->will_wake_with_timer && data->last_state_idx > CPUIDLE_DRIVER_STATE_START)
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
 		if(yawn_timer_interval > 5)
@@ -294,9 +295,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 				return;
 			}
 			data->weights[expertptr->id] /= floor;
-			if(data->weights[expertptr->id] < 50)
+			if(data->weights[expertptr->id] < 5)
 			{
-				data->weights[expertptr->id] = 50;
+				data->weights[expertptr->id] = 5;
 			}
 		}
 	}
