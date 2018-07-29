@@ -98,7 +98,8 @@ enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
 //	printk_ratelimited("hrtimer need updt %d\n", data->needs_update);
 	data->timer_active = 0;
-	data->woke_by_timer = 1;
+	if(!data->needs_update)
+		data->woke_by_timer = 1;
 	return HRTIMER_NORESTART;
 }
 
@@ -190,16 +191,16 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	//if(data->throughput_req && !data->will_wake_with_timer)
-	//{
+	if(data->throughput_req && !data->will_wake_with_timer)
+	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
-		//if(yawn_timer_interval > 30)
-		//{
-		//	ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-		//	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-		//	data->timer_active = 1;
-		//}
-	//}
+		if(yawn_timer_interval > 5)
+		{
+			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+			data->timer_active = 1;
+		}
+	}
 	return data->last_state_idx;
 }
 
@@ -402,6 +403,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
 	rate_sum = data->event_rate + data->next_request;
+	rate_sum *=2;
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
 	if(interarrival && interarrival < 10000){
