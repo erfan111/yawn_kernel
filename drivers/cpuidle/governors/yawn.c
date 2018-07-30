@@ -401,7 +401,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
-	rate_sum = data->event_rate + data->global_rate;
+	rate_sum = data->event_rate + data->event_rate + data->global_rate;
 //	rate_sum *=3;
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
