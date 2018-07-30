@@ -96,7 +96,6 @@ static void yawn_update(struct cpuidle_driver*, struct cpuidle_device*, struct y
 enum hrtimer_restart my_hrtimer_callback( struct hrtimer *timer )
 {
 	struct yawn_device *data = this_cpu_ptr(&yawn_devices);
-//	printk_ratelimited("hrtimer need updt %d\n", data->needs_update);
 	data->timer_active = 0;
 	if(!data->needs_update)
 		data->woke_by_timer = 1;
@@ -149,7 +148,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	}
 	if(index == 0)
 	{
-		printk("ERROR2!!!!!!!!!!!!!!!!!!!!!\n");
+		printk("BUG!!!!!!!!!!!!!!!!!!!!!\n");
 		return 1;
 	}
 	data->predicted_us = sum / index;
@@ -185,8 +184,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 			continue;
 		if (s->target_residency > data->predicted_us)
 			continue;
-//		if (s->exit_latency > latency_req)
-//			continue;
 
 		data->last_state_idx = i;
 		exit_latency = s->exit_latency;
@@ -260,9 +257,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	measured_us += data->pending;
 	data->measured_us = measured_us;
 	data->pending = 0;
-//printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
-//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
+		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+		data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 
 	if(data->attendees > 1)
 	{
@@ -331,11 +328,7 @@ void residency_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int residency_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned int ema = data->residency_moving_average;
-
-//	if(ema < 10)
-//		return -1;
-	return ema;
+	return data->residency_moving_average;
 }
 
 void residency_expert_reflect(struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us)
@@ -403,7 +396,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
-	rate_sum = data->event_rate + data->next_request;
+	rate_sum = data->event_rate;// + data->next_request;
 	rate_sum *=2;
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
