@@ -314,6 +314,15 @@ static void register_expert(struct expert *e, struct yawn_device *data)
 	e->data = data;
 }
 
+static void yawn_reset_weights(struct yawn_device *data)
+{
+	int i;
+	for(i=0; i < ACTIVE_EXPERTS; i++)
+	{
+		data->weights[i] = INITIAL_WEIGHT;
+	}
+}
+
 // ######################## End of of Yawn utility function definitions ###########################
 
 // ######################## Start of Experts definition ###########################################
@@ -403,6 +412,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->throughput_req = 1;
 		return interarrival;
 	}
+	yawn_reset_weights(data);
 	return -1;
 }
 
