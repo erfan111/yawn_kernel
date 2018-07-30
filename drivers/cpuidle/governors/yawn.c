@@ -189,16 +189,16 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-//	if(data->throughput_req && !data->will_wake_with_timer && data->last_state_idx > CPUIDLE_DRIVER_STATE_START)
-//	{
-//		yawn_timer_interval = data->predicted_us - exit_latency;
-//		if(yawn_timer_interval > 5)
-//		{
-//			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-//			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-//			data->timer_active = 1;
-//		}
-//	}
+	if(data->throughput_req && !data->will_wake_with_timer)
+	{
+		yawn_timer_interval = data->predicted_us - exit_latency;
+		if(yawn_timer_interval > 5)
+		{
+			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+			data->timer_active = 1;
+		}
+	}
 	return data->last_state_idx;
 }
 
@@ -257,9 +257,9 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	measured_us += data->pending;
 	data->measured_us = measured_us;
 	data->pending = 0;
-printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
-		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-		data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+//printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
+//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
+//		data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
 
 	if(data->attendees > 1)
 	{
@@ -406,8 +406,8 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
 	if(interarrival && interarrival < 10000){
-		if(interarrival > 200)
-			data->strict_latency = 1;
+//		if(interarrival > 1000)
+//			data->strict_latency = 1;
 
 		data->throughput_req = 1;
 		return interarrival;
