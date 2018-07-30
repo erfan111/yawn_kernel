@@ -388,12 +388,12 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		epl_diff = epoll_events - data->epoll_events;
 		data->event_rate = epl_diff*2;
 		data->epoll_events = epoll_events;
-		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->global_rate, data->next_request);
+//		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->global_rate, data->next_request);
 
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
-	rate_sum = data->event_rate;// + data->next_request;
-	rate_sum *=3;
+	rate_sum = data->event_rate + data->global_rate;
+//	rate_sum *=3;
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
 	if(interarrival && interarrival < 10000){
