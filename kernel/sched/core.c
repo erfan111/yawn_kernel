@@ -8717,8 +8717,8 @@ void sched_inc_net_reqs()
 
 unsigned int sched_get_net_reqs()
 {
-	struct rq *rq = cpu_rq(0);
-	return rq->network_req;
+	struct rq *rq = this_rq();
+	return rq->nr_switches;
 }
 
 unsigned long sched_get_epoll_events()
