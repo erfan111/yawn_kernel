@@ -189,16 +189,16 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(data->throughput_req && !data->will_wake_with_timer && data->last_state_idx > CPUIDLE_DRIVER_STATE_START)
-	{
-		yawn_timer_interval = data->predicted_us - exit_latency;
-		if(yawn_timer_interval > 5)
-		{
-			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
-			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-			data->timer_active = 1;
-		}
-	}
+//	if(data->throughput_req && !data->will_wake_with_timer && data->last_state_idx > CPUIDLE_DRIVER_STATE_START)
+//	{
+//		yawn_timer_interval = data->predicted_us - exit_latency;
+//		if(yawn_timer_interval > 5)
+//		{
+//			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
+//			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
+//			data->timer_active = 1;
+//		}
+//	}
 	return data->last_state_idx;
 }
 
