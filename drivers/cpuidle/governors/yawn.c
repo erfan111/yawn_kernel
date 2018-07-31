@@ -79,7 +79,6 @@ struct expert {
 	 void (*init) (struct yawn_device *data, struct cpuidle_device *dev);
 	 int (*select) (struct yawn_device *data, struct cpuidle_device *dev);
 	 void (*reflect) (struct yawn_device *data, struct cpuidle_device *dev, unsigned int measured_us);
-	 struct yawn_device (*data);
 	 struct list_head expert_list;
 };
 
@@ -311,7 +310,6 @@ static void register_expert(struct expert *e, struct yawn_device *data)
 	list_add(&(e->expert_list), &expert_list);
 	e->id = data->expert_id_counter++;
 	data->weights[e->id] = INITIAL_WEIGHT;
-	e->data = data;
 }
 
 static void yawn_reset_weights(struct yawn_device *data)
@@ -370,6 +368,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
 	struct timeval after;
 	unsigned int max, thresh;
+	int value = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	do_gettimeofday(&after);
 	period = after.tv_sec * 1000000 + after.tv_usec;
 	period -= 1000000 * data->before.tv_sec + data->before.tv_usec;
@@ -406,7 +405,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
 	if(interarrival && interarrival < 10000){
-		if(interarrival > 1000)
+		if(interarrival > value)
 			data->strict_latency = 1;
 
 		data->throughput_req = 1;
