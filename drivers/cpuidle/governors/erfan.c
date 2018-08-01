@@ -99,82 +99,10 @@ uint64_t interval_business(struct erfan_device *data, unsigned int measured_us, 
  */
 static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 {
-	struct erfan_device *data = this_cpu_ptr(&erfan_devices);
-	int throughput_req = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
-	int i, j, next_request;
-	ktime_t ktime;
-	unsigned long delay_in_us;
-	unsigned int measured_us;
-	uint64_t avg;
-	measured_us = cpuidle_get_last_residency(dev);
-	avg = interval_business(data, measured_us, dev->cpu);
-//	get_random_bytes(&j, sizeof(j));
-//	lessthan100 = j % drv->state_count;
-//	lessthan100++;
-//	printk_ratelimited("qos = %d\n", throughput_req);
-//
-//	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
-//			struct cpuidle_state *s = &drv->states[i];
-//			struct cpuidle_state_usage *su = &dev->states_usage[i];
-//
-//			if (s->disabled || su->disable)
-//				continue;
-//			if (i == lessthan100){
-//				data->last_state_idx = i;
-//				break;
-//			}
-//
-//			data->last_state_idx = i;
-//	}
-	data->index++;
-	if(data->timer_active)
-	{
-		hrtimer_cancel(&data->hr_timer);
-		data->timer_active = 0;
-		data->event_wake++;
-	}
-	if(!throughput_req)
-	{
-		// TODO: Decide here
-		data->last_state_idx = 4;
-		goto out;
-	}
-	if(data->last_state_idx > 2)
-	{
-		data->last_state_idx = 0;
-		data->was_on_high_cstate++;
-		goto out;
-	}
-	next_request = div_u64(1000000, throughput_req);
-	if(next_request > 200)
-	{
-		data->last_state_idx = 4;
-		delay_in_us = next_request - 150;
-	}
-	else if(next_request > 100)
-	{
-		data->last_state_idx = 3;
-		delay_in_us = next_request - 40;
-	}
-	else if(next_request > 40)
-	{
-		data->last_state_idx = 2;
-		delay_in_us = next_request - 10;
-	}
+	if(dev->cpu == 0)
+		return 0;
 	else
-	{
-		data->last_state_idx = 0;
-		goto out;
-	}
-	ktime = ktime_set( 0, US_TO_NS(delay_in_us));
-	//printk_ratelimited( "Starting timer to fire in %ldus cstate: %d (%lu)\n", delay_in_us, data->last_state_idx, data->index);
-
-	hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-	data->timer_active = 1;
-out:
-	if(!(data->index % 5000))
-		printk("cpu %d  index %lu  unmature wakeups: %lu, was on high cstate: %lu", dev->cpu, data->index, data->event_wake, data->was_on_high_cstate);
-	return data->last_state_idx;
+		return drv->state_count-1;
 }
 
 /**
@@ -214,8 +142,8 @@ static int erfan_enable_device(struct cpuidle_driver *drv,
 	int i;
 
 	memset(data, 0, sizeof(struct erfan_device));
-	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
-	data->hr_timer.function = &my_hrtimer_callback;
+//	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+//	data->hr_timer.function = &my_hrtimer_callback;
 	return 0;
 }
 
