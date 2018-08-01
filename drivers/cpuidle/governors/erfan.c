@@ -104,7 +104,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		return 0;
 	else
 		set_cpu_online(dev->cpu, false);
-		return drv->state_count-1;
+	return drv->state_count-1;
 }
 
 /**

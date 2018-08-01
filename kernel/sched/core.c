@@ -7564,7 +7564,7 @@ void __init sched_init(void)
 		init_rq_hrtick(rq);
 		atomic_set(&rq->nr_iowait, 0);
 		// =e
-		atomic_set(&rq->nr_network_iowait, 0);
+		atomic_set(&rq->pm_enabled, 1);
 		rq->network_req = 0;
 		//
 	}
@@ -8684,6 +8684,12 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 #endif	/* CONFIG_CGROUP_SCHED */
 
 // =e
+
+void sched_change_rq_status(int cpu, int status)
+{
+	struct rq *rq = cpu_rq(cpu);
+	atomic_set(rq->pm_enabled, status);
+}
 
 void sched_set_tasks_woke()
 {

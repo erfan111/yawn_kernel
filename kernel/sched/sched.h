@@ -623,7 +623,7 @@ struct rq {
 
 	atomic_t nr_iowait;
 	// =e
-	atomic_t nr_network_iowait;
+	atomic_t pm_enabled;
 	unsigned int ywn_tasks_woke;
 	unsigned int network_req;
 	unsigned long epoll_events;

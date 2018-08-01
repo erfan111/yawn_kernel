@@ -3232,4 +3232,6 @@ extern unsigned long sched_get_epoll_events(void);
 
 extern void sched_inc_epoll_events(int cnt);
 
+extern void sched_change_rq_status(int cpu, int status);
+
 //
