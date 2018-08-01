@@ -4850,12 +4850,16 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 	int least_loaded_cpu = this_cpu;
 	int shallowest_idle_cpu = -1;
 	int i;
-
+	// =erfan
+	int e;
+	//
 	/* Traverse only the allowed CPUs */
 	for_each_cpu_and(i, sched_group_cpus(group), tsk_cpus_allowed(p)) {
 		//=erfan
 		struct rq *rq = cpu_rq(i);
-		if(!atomic_read(&rq->pm_enabled))
+		e = atomic_read(&rq->pm_enabled);
+		printk_ratelimited("cpu %d, %d\n", i, e);
+		if(!e)
 			continue;
 		//
 		if (idle_cpu(i)) {
@@ -4888,7 +4892,9 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 			}
 		}
 	}
-
+	// =erfan
+//	printk_ratelimited("masks: %d, %d, %d, %d, %d, %d, %d, %d \n", cpu_rq(0)->);
+	//
 	return shallowest_idle_cpu != -1 ? shallowest_idle_cpu : least_loaded_cpu;
 }
 
