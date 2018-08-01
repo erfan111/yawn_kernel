@@ -33,6 +33,10 @@
 #define DECAY 8
 #define MAX_INTERESTING 50000
 
+#define bool int
+#define false 0
+#define true 1
+
 // ######################## Start of Data definitions ##############################################
 
 struct yawn_device {
@@ -44,26 +48,26 @@ struct yawn_device {
 	unsigned int	pending;
 	unsigned int attendees;
 	struct hrtimer hr_timer;
-	int timer_active;
-	int woke_by_timer;
-	int needs_update;
+	bool timer_active;
+	bool woke_by_timer;
+	bool needs_update;
 	unsigned long inmature;
 	unsigned long total;
 	int expert_id_counter;
 	unsigned int weights[ACTIVE_EXPERTS];
 	int predictions[ACTIVE_EXPERTS];
 	int former_predictions[ACTIVE_EXPERTS];
-	unsigned int will_wake_with_timer;
-	int strict_latency;
-	int throughput_req;
+	bool will_wake_with_timer;
+	bool strict_latency;
+	bool network_activity;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
 	struct timeval before;
 	unsigned long last_ttwu_counter;
-	unsigned int next_request;
-	unsigned int my_counter;
-	unsigned int global_rate;
+	unsigned int ttwu_rate;
+	unsigned int last_cntxswch_counter;
+	unsigned int cntxswch_rate;
 	unsigned long epoll_events;
 	unsigned long event_rate;
 
@@ -116,16 +120,17 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
 	int state_count = drv->state_count;
+	bool go_to_deep_sleep = false;
 	// reflect the last residency into experts and yawn
 
 	if (data->needs_update) {
 		yawn_update(drv, dev, data);
-		data->needs_update = 0;
+		data->needs_update = false;
 	}
-	data->throughput_req = 0;
-	data->strict_latency = 0;
-	data->woke_by_timer = 0;
-	data->will_wake_with_timer = 0;
+	data->network_activity = false;
+	data->strict_latency = false;
+	data->woke_by_timer = false;
+	data->will_wake_with_timer = false;
 
 	sched_reset_tasks_woke();
 	data->last_state_idx = CPUIDLE_DRIVER_STATE_START - 1;
@@ -144,6 +149,11 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 			 sum += data->weights[expertptr->id] * data->predictions[expertptr->id];
 			 index+= data->weights[expertptr->id];
 		 }
+		 else
+			 {
+			 data->last_state_idx = state_count;
+			 return data->last_state_idx;
+			 }
 	}
 	if(index == 0)
 	{
@@ -166,7 +176,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(data->predicted_us > data->next_timer_us)
 	{
 		data->predicted_us = data->next_timer_us;
-		data->will_wake_with_timer = 1;
+		data->will_wake_with_timer = true;
 	}
 
 	/*
@@ -188,14 +198,14 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		exit_latency = s->exit_latency;
 	}
 
-	if(data->throughput_req && !data->will_wake_with_timer)
+	if(data->network_activity && !data->will_wake_with_timer)
 	{
 		yawn_timer_interval = data->predicted_us - exit_latency;
 		if(yawn_timer_interval > 5)
 		{
 			ktime = ktime_set( 0, US_TO_NS(yawn_timer_interval));
 			hrtimer_start( &data->hr_timer, ktime, HRTIMER_MODE_REL );
-			data->timer_active = 1;
+			data->timer_active = true;
 		}
 	}
 	return data->last_state_idx;
@@ -217,10 +227,10 @@ static void yawn_reflect(struct cpuidle_device *dev, int index)
 	if(data->timer_active)
 	{
 		hrtimer_cancel(&data->hr_timer);
-		data->timer_active = 0;
+		data->timer_active = false;
 		data->inmature++;
 	}
-	data->needs_update = 1;
+	data->needs_update = true;
 }
 
 /**
@@ -242,7 +252,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		measured_us -= target->exit_latency;
 	else // we don't want any inaccuracies, so just ignore it
 	{
-		data->pending = 0;
+		data->pending = false;
 		return;
 	}
 	if (measured_us > data->next_timer_us)
@@ -255,7 +265,7 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	}
 	measured_us += data->pending;
 	data->measured_us = measured_us;
-	data->pending = 0;
+	data->pending = false;
 //printk_ratelimited("cpu(%u) maex w=%u, p=%d, netex w=%u, p=%d, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
 //		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
 //		data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
@@ -380,35 +390,35 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //		if(!ttwups)
 //			return -1;
 		difference = ttwups - data->last_ttwu_counter;
-		data->next_request = difference*2;
-//		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->next_request, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
+		data->ttwu_rate = difference*2;
+//		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->ttwu_rate, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
 		data->last_ttwu_counter = ttwups;
 		data->before = after;
 
 		// 2
 		max = sched_get_net_reqs();
-		thresh = max - data->my_counter;
-		data->global_rate = thresh*2;
-		data->my_counter = max;
+		thresh = max - data->last_cntxswch_counter;
+		data->cntxswch_rate = thresh*2;
+		data->last_cntxswch_counter = max;
 
 		// 3
 		epoll_events = sched_get_epoll_events();
 		epl_diff = epoll_events - data->epoll_events;
 		data->event_rate = epl_diff*2;
 		data->epoll_events = epoll_events;
-//		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->global_rate, data->next_request);
+//		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->cntxswch_rate, data->ttwu_rate);
 
 	}
-//	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->next_request);
-	rate_sum = data->event_rate + data->event_rate + data->global_rate;
+//	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->ttwu_rate);
+	rate_sum = data->event_rate + data->event_rate + data->cntxswch_rate;
 //	rate_sum *=3;
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
 	if(interarrival && interarrival < 10000){
 		if(interarrival > value)
-			data->strict_latency = 1;
+			data->strict_latency = true;
 
-		data->throughput_req = 1;
+		data->network_activity = true;
 		return interarrival;
 	}
 	yawn_reset_weights(data);
