@@ -4855,7 +4855,7 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 	for_each_cpu_and(i, sched_group_cpus(group), tsk_cpus_allowed(p)) {
 		//=erfan
 		struct rq *rq = cpu_rq(i);
-		if(!atomic_read(rq->pm_enabled))
+		if(!atomic_read(&rq->pm_enabled))
 			continue;
 		//
 		if (idle_cpu(i)) {
@@ -7310,7 +7310,7 @@ static int idle_balance(struct rq *this_rq)
 	u64 curr_cost = 0;
 
 	//=erfan
-	if(!atomic_read(this_rq->pm_enabled))
+	if(!atomic_read(&this_rq->pm_enabled))
 		return 0;
 	//
 
