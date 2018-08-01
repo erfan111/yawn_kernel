@@ -153,7 +153,7 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		 }
 		 else
 			 {
-			 data->last_state_idx = state_count;
+			 data->last_state_idx = state_count-1;
 			 return data->last_state_idx;
 			 }
 	}
@@ -393,7 +393,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
 	struct timeval after;
 	unsigned int max, thresh;
-	int value = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
+	//int value = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	do_gettimeofday(&after);
 	period = after.tv_sec * 1000000 + after.tv_usec;
 	period -= 1000000 * data->before.tv_sec + data->before.tv_usec;
