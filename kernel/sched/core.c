@@ -8688,7 +8688,7 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 void sched_change_rq_status(int cpu, int status)
 {
 	struct rq *rq = cpu_rq(cpu);
-	atomic_set(rq->pm_enabled, status);
+	atomic_set(&rq->pm_enabled, status);
 }
 
 void sched_set_tasks_woke()
