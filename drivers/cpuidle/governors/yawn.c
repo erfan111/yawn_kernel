@@ -60,6 +60,8 @@ struct yawn_device {
 	bool will_wake_with_timer;
 	bool strict_latency;
 	bool network_activity;
+	int idle_counter;
+	int busy_counter;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
@@ -307,9 +309,22 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-//	printk_ratelimited("cpu(%u) maex w=%u, p=%u, netex w=%u, p=%d, cfex w=%u, p=%u, sys_pred = %u, state=%d, sleep=%u next_timer=%u, total = %lu, inmature = %lu\n",
-//		dev->cpu, data->weights[0], data->predictions[0],data->weights[1], data->predictions[1],
-//		data->weights[2], data->predictions[2], data->predicted_us,last_idx, data->measured_us, data->next_timer_us, data->total, data->inmature);
+
+	if(data->last_state_idx > 3)
+	{
+		data->idle_counter++;
+		data->busy_counter = 0;
+		if(data->idle_counter == 8 && dev->cpu)
+			sched_change_rq_status(dev->cpu, 0);
+	}
+	else
+	{
+		data->busy_counter++;
+		data->idle_counter = 0;
+		if(data->busy_counter == 8 && dev->cpu+1 != num_online_cpus())
+			sched_change_rq_status(dev->cpu+1, 1);
+	}
+
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -415,8 +430,8 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
 	if(interarrival && interarrival < 10000){
-		if(interarrival > value)
-			data->strict_latency = true;
+//		if(interarrival > value)
+//			data->strict_latency = true;
 
 		data->network_activity = true;
 		return interarrival;

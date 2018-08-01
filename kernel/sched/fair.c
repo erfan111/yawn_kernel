@@ -4853,6 +4853,11 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 
 	/* Traverse only the allowed CPUs */
 	for_each_cpu_and(i, sched_group_cpus(group), tsk_cpus_allowed(p)) {
+		//=erfan
+		struct rq *rq = cpu_rq(i);
+		if(!atomic_read(rq->pm_enabled))
+			continue;
+		//
 		if (idle_cpu(i)) {
 			struct rq *rq = cpu_rq(i);
 			struct cpuidle_state *idle = idle_get_state(rq);
@@ -7303,6 +7308,11 @@ static int idle_balance(struct rq *this_rq)
 	struct sched_domain *sd;
 	int pulled_task = 0;
 	u64 curr_cost = 0;
+
+	//=erfan
+	if(!atomic_read(this_rq->pm_enabled))
+		return 0;
+	//
 
 	// =e This function does nothing at all
 	idle_enter_fair(this_rq);
