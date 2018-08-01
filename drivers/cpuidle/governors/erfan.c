@@ -16,6 +16,7 @@
 #include <linux/math64.h>
 #include <linux/module.h>
 #include <linux/random.h>
+#include <linux/cpumask.h>
 
 #define US_TO_NS(x)	(x << 10)
 #define INTERVALS 8
@@ -102,6 +103,7 @@ static int erfan_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if(dev->cpu == 0)
 		return 0;
 	else
+		set_cpu_online(dev->cpu, false);
 		return drv->state_count-1;
 }
 
