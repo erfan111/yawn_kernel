@@ -314,14 +314,14 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 	{
 		data->idle_counter++;
 		data->busy_counter = 0;
-		if(data->idle_counter >= 8 && dev->cpu)
+		if(data->idle_counter >= 20 && dev->cpu)
 			sched_change_rq_status(dev->cpu, 0);
 	}
 	else
 	{
 		data->busy_counter++;
 		data->idle_counter = 0;
-		if(data->busy_counter >= 8 && dev->cpu+1 != num_online_cpus())
+		if(data->busy_counter >= 20 && dev->cpu+1 != num_online_cpus())
 			sched_change_rq_status(dev->cpu+1, 1);
 	}
 

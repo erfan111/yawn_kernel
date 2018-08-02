@@ -4858,7 +4858,7 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 		//=erfan
 		struct rq *rq = cpu_rq(i);
 		e = atomic_read(&rq->pm_enabled);
-		printk_ratelimited("cpu %d, %d\n", i, e);
+//		printk_ratelimited("cpu %d, %d\n", i, e);
 		if(!e)
 			continue;
 		//
