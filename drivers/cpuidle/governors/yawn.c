@@ -468,7 +468,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		// checking core 7 for turn off/on
 		if(dev->cpu < 7 && data->in_deep_sleep && !atomic_read(&turn_off_votes[dev->cpu]))
 		{
-			atomic_set(turn_off_votes[dev->cpu], 1);
+			atomic_set(&turn_off_votes[dev->cpu], 1);
 			atomic_inc(&turn_off_vote);
 			if(atomic_read(&turn_off_vote) >= 4 && atomic_read(&cpu7_status))
 			{
@@ -485,7 +485,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		}
 		if(dev->cpu < 7 && data->in_shallow_sleep && !atomic_read(&turn_on_votes[dev->cpu]))
 		{
-			atomic_set(turn_on_votes[dev->cpu], 1);
+			atomic_set(&turn_on_votes[dev->cpu], 1);
 			atomic_inc(&turn_on_vote);
 			if(atomic_read(&turn_on_vote) >= 4 && !atomic_read(&cpu7_status))
 			{
