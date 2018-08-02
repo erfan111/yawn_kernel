@@ -8687,7 +8687,27 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 
 void sched_change_rq_status(int cpu, int status)
 {
-	struct rq *rq = cpu_rq(cpu);
+	struct rq *rq;
+	int i;
+	if(status)
+	{
+		for(i=0;i< num_online_cpus();i++)
+		{
+			rq = cpu_rq(i);
+			if(!atomic_read(&rq->pm_enabled))
+				break;
+		}
+
+	}
+	else
+	{
+		for(i=num_online_cpus()-1;i > 0; i--)
+		{
+			rq = cpu_rq(i);
+			if(atomic_read(&rq->pm_enabled))
+				break;
+		}
+	}
 	atomic_set(&rq->pm_enabled, status);
 }
 
