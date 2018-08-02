@@ -466,7 +466,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->epoll_events = epoll_events;
 //		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->cntxswch_rate, data->ttwu_rate);
 		// checking core 7 for turn off/on
-		if(dev->cpu < 7 && data->in_deep_sleep && !atomic_read(turn_off_votes[dev->cpu]))
+		if(dev->cpu < 7 && data->in_deep_sleep && !atomic_read(&turn_off_votes[dev->cpu]))
 		{
 			atomic_set(turn_off_votes[dev->cpu], 1);
 			atomic_inc(&turn_off_vote);
@@ -479,11 +479,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 				}
 				for(i=0; i < 7; i++)
 				{
-					atomic_set(turn_off_votes[dev->cpu], 0);
+					atomic_set(&turn_off_votes[dev->cpu], 0);
 				}
 			}
 		}
-		if(dev->cpu < 7 && data->in_shallow_sleep && !atomic_read(turn_on_votes[dev->cpu]))
+		if(dev->cpu < 7 && data->in_shallow_sleep && !atomic_read(&turn_on_votes[dev->cpu]))
 		{
 			atomic_set(turn_on_votes[dev->cpu], 1);
 			atomic_inc(&turn_on_vote);
@@ -496,7 +496,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 				}
 				for(i=0; i < 7; i++)
 				{
-					atomic_set(turn_on_votes[dev->cpu], 0);
+					atomic_set(&turn_on_votes[dev->cpu], 0);
 				}
 			}
 		}
