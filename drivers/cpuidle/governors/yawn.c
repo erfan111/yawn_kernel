@@ -18,6 +18,7 @@
 #include <linux/random.h>
 #include <linux/list_sort.h>
 #include <net/sock.h>
+#include <asm/cpu.h>
 #include "exp.h"
 
 #define EXPERT_NAME_LEN 15
@@ -39,6 +40,7 @@
 
 // ######################## Start of Data definitions ##############################################
 
+int the_flag[8] = {0,0,0,0,0,0,0,0};
 struct yawn_device {
 	// Yawn Global Data
 	int		last_state_idx;
@@ -310,20 +312,50 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 		}
 	}
 
-	if(data->last_state_idx > 2)
-	{
-		data->idle_counter++;
-		data->busy_counter = 0;
-		if(data->idle_counter >= 20 && dev->cpu)
-			sched_change_rq_status(dev->cpu, 0);
-	}
-	else
-	{
-		data->busy_counter++;
-		data->idle_counter = 0;
-		if(data->busy_counter >= 20 && dev->cpu+1 != num_online_cpus())
-			sched_change_rq_status(dev->cpu+1, 1);
-	}
+//	if(data->last_state_idx > 2)
+//	{
+//		data->idle_counter++;
+//		data->busy_counter = 0;
+//		if(data->idle_counter >= 20 && dev->cpu)
+//			sched_change_rq_status(dev->cpu, 0);
+//	}
+//	else
+//	{
+//		data->busy_counter++;
+//		data->idle_counter = 0;
+//		if(data->busy_counter >= 20 && dev->cpu+1 != num_online_cpus())
+//			sched_change_rq_status(dev->cpu+1, 1);
+//	}
+		if(data->last_state_idx > 2)
+		{
+			data->idle_counter++;
+			data->busy_counter = 0;
+			if(data->idle_counter >= 100 && dev->cpu != 7)
+			{
+				the_flag[dev->cpu] = 0;
+				cpu_down(7);
+			}
+
+		}
+		else
+		{
+			data->busy_counter++;
+			data->idle_counter = 0;
+			if(data->busy_counter >= 100 && dev->cpu != 7)
+			{
+				int i, up = true;
+				the_flag[dev->cpu] = 1;
+				for(i=0;i<7;i++)
+				{
+					if(the_flag[i] == 0)
+						up = false;
+					break;
+				}
+				if(up)
+					cpu_up(7);
+			}
+		}
+
 
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
@@ -430,8 +462,8 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(rate_sum)
 		interarrival = div_u64(1000000, rate_sum);
 	if(interarrival && interarrival < 10000){
-//		if(interarrival > value)
-//			data->strict_latency = true;
+		if(interarrival > 400)
+			data->strict_latency = true;
 
 		data->network_activity = true;
 		return interarrival;
