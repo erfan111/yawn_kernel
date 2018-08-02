@@ -40,7 +40,12 @@
 
 // ######################## Start of Data definitions ##############################################
 
-int the_flag[8] = {0,0,0,0,0,0,0,0};
+atomic_t turn_on_vote;
+atomic_t turn_off_vote;
+atomic_t cpu7_status;
+atomic_t turn_off_votes[7];
+atomic_t turn_on_votes[7];
+
 struct yawn_device {
 	// Yawn Global Data
 	int		last_state_idx;
@@ -64,6 +69,8 @@ struct yawn_device {
 	bool network_activity;
 	int idle_counter;
 	int busy_counter;
+	bool in_deep_sleep;
+	bool in_shallow_sleep;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
@@ -326,35 +333,35 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 //		if(data->busy_counter >= 20 && dev->cpu+1 != num_online_cpus())
 //			sched_change_rq_status(dev->cpu+1, 1);
 //	}
-		if(data->last_state_idx > 2)
-		{
-			data->idle_counter++;
-			data->busy_counter = 0;
-			if(data->idle_counter >= 100 && dev->cpu != 7)
-			{
-				the_flag[dev->cpu] = 0;
-				cpu_down(7);
-			}
-
-		}
-		else
-		{
-			data->busy_counter++;
-			data->idle_counter = 0;
-			if(data->busy_counter >= 100 && dev->cpu != 7)
-			{
-				int i, up = true;
-				the_flag[dev->cpu] = 1;
-				for(i=0;i<7;i++)
-				{
-					if(the_flag[i] == 0)
-						up = false;
-					break;
-				}
-				if(up)
-					cpu_up(7);
-			}
-		}
+//		if(data->last_state_idx > 2)
+//		{
+//			data->idle_counter++;
+//			data->busy_counter = 0;
+//			if(data->idle_counter >= 100 && dev->cpu != 7)
+//			{
+//				the_flag[dev->cpu] = 0;
+//				cpu_down(7);
+//			}
+//
+//		}
+//		else
+//		{
+//			data->busy_counter++;
+//			data->idle_counter = 0;
+//			if(data->busy_counter >= 100 && dev->cpu != 7)
+//			{
+//				int i, up = true;
+//				the_flag[dev->cpu] = 1;
+//				for(i=0;i<7;i++)
+//				{
+//					if(the_flag[i] == 0)
+//						up = false;
+//					break;
+//				}
+//				if(up)
+//					cpu_up(7);
+//			}
+//		}
 
 
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
@@ -424,18 +431,22 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
 	struct timeval after;
-	unsigned int max, thresh;
+	unsigned int max, thresh, i;
 	//int value = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	do_gettimeofday(&after);
 	period = after.tv_sec * 1000000 + after.tv_usec;
 	period -= 1000000 * data->before.tv_sec + data->before.tv_usec;
 
+	if(data->last_state_idx != 4)
+		data->in_deep_sleep = false;
+
+	if(data->last_state_idx > 2)
+		data->in_shallow_sleep = false;
+
 	if(period >= 500000)
 	{
 		// 1
 		ttwups = sched_get_nr_ttwu(dev->cpu);
-//		if(!ttwups)
-//			return -1;
 		difference = ttwups - data->last_ttwu_counter;
 		data->ttwu_rate = difference*2;
 //		printk_ratelimited("rate: next req=%u cpu(%u) period = %ld, ttwus now= %lu, before = %lu, difference = %lu\n", data->ttwu_rate, dev->cpu, period, ttwups, data->last_ttwu_counter, difference);
@@ -454,7 +465,43 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->event_rate = epl_diff*2;
 		data->epoll_events = epoll_events;
 //		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->cntxswch_rate, data->ttwu_rate);
-
+		// checking core 7 for turn off/on
+		if(dev->cpu < 7 && data->in_deep_sleep && !atomic_read(turn_off_votes[dev->cpu]))
+		{
+			atomic_set(turn_off_votes[dev->cpu], 1);
+			atomic_inc(&turn_off_vote);
+			if(atomic_read(&turn_off_vote) >= 4 && atomic_read(&cpu7_status))
+			{
+				if(cpu_down(7))
+				{
+					atomic_set(&turn_off_vote, 0);
+					atomic_set(&cpu7_status, 0);
+				}
+				for(i=0; i < 7; i++)
+				{
+					atomic_set(turn_off_votes[dev->cpu], 0);
+				}
+			}
+		}
+		if(dev->cpu < 7 && data->in_shallow_sleep && !atomic_read(turn_on_votes[dev->cpu]))
+		{
+			atomic_set(turn_on_votes[dev->cpu], 1);
+			atomic_inc(&turn_on_vote);
+			if(atomic_read(&turn_on_vote) >= 4 && !atomic_read(&cpu7_status))
+			{
+				if(cpu_up(7))
+				{
+					atomic_set(&turn_on_vote, 0);
+					atomic_set(&cpu7_status, 1);
+				}
+				for(i=0; i < 7; i++)
+				{
+					atomic_set(turn_on_votes[dev->cpu], 0);
+				}
+			}
+		}
+		data->in_deep_sleep = true;
+		data->in_shallow_sleep = true;
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->ttwu_rate);
 	rate_sum = data->event_rate + data->event_rate + data->cntxswch_rate;
@@ -571,7 +618,11 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	struct yawn_device *data = &per_cpu(yawn_devices, dev->cpu);
 
 	memset(data, 0, sizeof(struct yawn_device));
-
+	atomic_set(&turn_on_vote, 0);
+	atomic_set(&turn_off_vote, 0);
+	atomic_set(&cpu7_status, 1);
+	atomic_set(&turn_on_votes[dev->cpu], 0);
+	atomic_set(&turn_off_votes[dev->cpu], 0);
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
