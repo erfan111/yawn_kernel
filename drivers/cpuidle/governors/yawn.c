@@ -40,11 +40,14 @@
 
 // ######################## Start of Data definitions ##############################################
 
-atomic_t turn_on_vote;
-atomic_t turn_off_vote;
-atomic_t cpu7_status;
-atomic_t turn_off_votes[7];
-atomic_t turn_on_votes[7];
+int turn_on_vote;
+int turn_off_vote;
+int cpu7_status;
+int turn_off_votes[7];
+int turn_on_votes[7];
+
+static DEFINE_SPINLOCK(xxx_lock);
+unsigned long flags;
 
 struct yawn_device {
 	// Yawn Global Data
@@ -466,47 +469,49 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->epoll_events = epoll_events;
 //		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->cntxswch_rate, data->ttwu_rate);
 		// checking core 7 for turn off/on
-		if(dev->cpu < 7 && data->in_deep_sleep && !atomic_read(&turn_off_votes[dev->cpu]))
+		spin_lock_irqsave(&xxx_lock, flags);
+		if(dev->cpu < 7 && data->in_deep_sleep && !turn_off_votes[dev->cpu])
 		{
 			printk_ratelimited("cpu %d setting my vote for turn off\n", dev->cpu);
-			atomic_set(&turn_off_votes[dev->cpu], 1);
-			atomic_inc(&turn_off_vote);
-			if(atomic_read(&turn_off_vote) >= 4 && atomic_read(&cpu7_status))
+			turn_off_votes[dev->cpu] = 1;
+			turn_off_vote++;
+			if(turn_off_vote >= 4 && cpu7_status)
 			{
 				error = cpu_down(7);
 				printk_ratelimited("cpu %d votes agrree on turn off, error = %d\n", dev->cpu, error);
 
-				if(!error)
+				if(error == 0)
 				{
-					atomic_set(&turn_off_vote, 0);
-					atomic_set(&cpu7_status, 0);
+					turn_off_vote = 0;
+					cpu7_status = 0;
 				}
 				for(i=0; i < 7; i++)
 				{
-					atomic_set(&turn_off_votes[dev->cpu], 0);
+					turn_off_votes[dev->cpu] = 0;
 				}
 			}
 		}
-		if(dev->cpu < 7 && data->in_shallow_sleep && !atomic_read(&turn_on_votes[dev->cpu]))
+		if(dev->cpu < 7 && data->in_shallow_sleep && !turn_on_votes[dev->cpu])
 		{
 			printk_ratelimited("cpu %d setting my vote for turn on\n", dev->cpu);
-			atomic_set(&turn_on_votes[dev->cpu], 1);
-			atomic_inc(&turn_on_vote);
-			if(atomic_read(&turn_on_vote) >= 4 && !atomic_read(&cpu7_status))
+			turn_on_votes[dev->cpu] = 1;
+			turn_on_vote++;
+			if(turn_on_vote >= 4 && !cpu7_status)
 			{
 				error = cpu_up(7);
 				printk_ratelimited("cpu %d votes agrree on turn on, error= %d\n", dev->cpu, error);
-				if(!error)
+				if(error == 0)
 				{
-					atomic_set(&turn_on_vote, 0);
-					atomic_set(&cpu7_status, 1);
+					turn_on_vote = 0;
+					cpu7_status = 1;
 				}
 				for(i=0; i < 7; i++)
 				{
-					atomic_set(&turn_on_votes[dev->cpu], 0);
+					turn_on_votes[dev->cpu] = 0;
 				}
 			}
 		}
+		spin_unlock_irqrestore(&xxx_lock, flags);
 		data->in_deep_sleep = true;
 		data->in_shallow_sleep = true;
 	}
