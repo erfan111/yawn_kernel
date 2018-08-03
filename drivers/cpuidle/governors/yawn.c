@@ -444,7 +444,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	period = after.tv_sec * 1000000 + after.tv_usec;
 	period -= 1000000 * data->before.tv_sec + data->before.tv_usec;
 
-	if(data->last_state_idx != 4)
+	if(data->last_state_idx < 3)
 		data->in_deep_sleep = false;
 
 	if(data->last_state_idx > 2)
