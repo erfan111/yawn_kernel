@@ -43,8 +43,6 @@
 
 // ######################## Start of Data definitions ##############################################
 
-int turn_on_vote;
-int turn_off_vote;
 static int cpu7_status;
 int turn_off_votes[7];
 int turn_on_votes[7];
@@ -151,7 +149,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->will_wake_with_timer = false;
 
 	sched_reset_tasks_woke();
-	data->last_state_idx = CPUIDLE_DRIVER_STATE_START - 1;
 	data->total++;
 	data->next_timer_us = ktime_to_us(tick_nohz_get_sleep_length());
 	data->attendees = 0;
@@ -167,11 +164,6 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 			 sum += data->weights[expertptr->id] * data->predictions[expertptr->id];
 			 index+= data->weights[expertptr->id];
 		 }
-		 else
-			 {
-			 data->last_state_idx = state_count-1;
-			 return data->last_state_idx;
-			 }
 	}
 	if(index == 0)
 	{
@@ -179,6 +171,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		return 1;
 	}
 	data->predicted_us = sum / index;
+	data->last_state_idx = CPUIDLE_DRIVER_STATE_START - 1;
+
 //	printk_ratelimited("select! weights %d and %d! : predicted = %d\n", data->weights[0], data->weights[1], data->predicted_us);
 
 	/*
@@ -434,6 +428,17 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 	data->last_ttwu_counter = sched_get_nr_ttwu(dev->cpu);
 }
 
+int vote_sum(int *list)
+{
+	int sum = 0, i;
+	for(i=0;i<7;i++)
+	{
+		if(list[i])
+			sum++;
+	}
+	return sum;
+}
+
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
@@ -478,10 +483,9 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		{
 			printk_ratelimited("cpu %d setting my vote for turn off\n", dev->cpu);
 			turn_off_votes[dev->cpu] = 1;
-			turn_off_vote++;
-			if(turn_off_vote >= 4 && cpu7_status)
+			turn_on_votes[dev->cpu] = 0;
+			if(vote_sum(turn_off_votes) >= 4 && cpu7_status)
 			{
-				turn_off_vote = 0;
 				cpu7_status = 0;
 				for(i=0; i < 7; i++)
 					turn_off_votes[dev->cpu] = 0;
@@ -491,12 +495,10 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		{
 			printk_ratelimited("cpu %d setting my vote for turn on\n", dev->cpu);
 			turn_on_votes[dev->cpu] = 1;
-			turn_on_vote++;
-			if(turn_on_vote >= 4 && !cpu7_status)
+			turn_off_votes[dev->cpu] = 0;
+			if(vote_sum(turn_on_votes) >= 4 && !cpu7_status)
 			{
-				turn_on_vote = 0;
 				cpu7_status = 1;
-
 				for(i=0; i < 7; i++)
 					turn_on_votes[dev->cpu] = 0;
 			}
@@ -639,8 +641,6 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	struct yawn_device *data = &per_cpu(yawn_devices, dev->cpu);
 
 	memset(data, 0, sizeof(struct yawn_device));
-	turn_on_vote = 0;
-	turn_off_vote = 0;
 	cpu7_status = 1;
 	turn_on_votes[dev->cpu] =  0;
 	turn_off_votes[dev->cpu] =  0;
