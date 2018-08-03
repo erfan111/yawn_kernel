@@ -630,10 +630,10 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	struct yawn_device *data = &per_cpu(yawn_devices, dev->cpu);
 
 	memset(data, 0, sizeof(struct yawn_device));
-	turn_on_vote, 0;
-	turn_off_vote, 0;
-	cpu7_status, 1;
-	turn_on_votes[dev->cpu], 0;
+	turn_on_vote = 0;
+	turn_off_vote = 0;
+	cpu7_status = 1;
+	turn_on_votes[dev->cpu] =  0;
 	turn_off_votes[dev->cpu] =  0;
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert, data);
