@@ -18,8 +18,11 @@
 #include <linux/random.h>
 #include <linux/list_sort.h>
 #include <net/sock.h>
-#include <asm/cpu.h>
 #include "exp.h"
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
+#include <linux/fs.h>
+
 
 #define EXPERT_NAME_LEN 15
 #define ACTIVE_EXPERTS 2
@@ -42,9 +45,10 @@
 
 int turn_on_vote;
 int turn_off_vote;
-int cpu7_status;
+static int cpu7_status;
 int turn_off_votes[7];
 int turn_on_votes[7];
+static struct kobject *yawn_kobject;
 
 static DEFINE_SPINLOCK(xxx_lock);
 unsigned long flags;
@@ -477,18 +481,10 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			turn_off_vote++;
 			if(turn_off_vote >= 4 && cpu7_status)
 			{
-				error = cpu_down(7);
-				printk_ratelimited("cpu %d votes agrree on turn off, error = %d\n", dev->cpu, error);
-
-				if(error == 0)
-				{
-					turn_off_vote = 0;
-					cpu7_status = 0;
-				}
+				turn_off_vote = 0;
+				cpu7_status = 0;
 				for(i=0; i < 7; i++)
-				{
 					turn_off_votes[dev->cpu] = 0;
-				}
 			}
 		}
 		if(dev->cpu < 7 && data->in_shallow_sleep && !turn_on_votes[dev->cpu])
@@ -498,17 +494,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 			turn_on_vote++;
 			if(turn_on_vote >= 4 && !cpu7_status)
 			{
-				error = cpu_up(7);
-				printk_ratelimited("cpu %d votes agrree on turn on, error= %d\n", dev->cpu, error);
-				if(error == 0)
-				{
-					turn_on_vote = 0;
-					cpu7_status = 1;
-				}
+				turn_on_vote = 0;
+				cpu7_status = 1;
+
 				for(i=0; i < 7; i++)
-				{
 					turn_on_votes[dev->cpu] = 0;
-				}
 			}
 		}
 		spin_unlock_irqrestore(&xxx_lock, flags);
@@ -616,7 +606,26 @@ struct expert timer_expert = {
 };
 
 // ######################## End of Experts definition ###########################################
+// ######################## Start of Sysfs definition ###########################################
 
+
+static ssize_t yawn_show(struct kobject *kobj, struct kobj_attribute *attr,
+                      char *buf)
+{
+        return sprintf(buf, "%d\n", cpu7_status);
+}
+
+static ssize_t yawn_store(struct kobject *kobj, struct kobj_attribute *attr,
+                      char *buf, size_t count)
+{
+        return -1;
+}
+
+
+static struct kobj_attribute yawn_attribute =__ATTR(cpu7_status, 0660, yawn_show,
+                                                   yawn_store);
+
+// ######################## End of Sysfs definition ###########################################
 // ######################## Start of Yawn initialization ###########################################
 
 /**
@@ -658,6 +667,12 @@ static struct cpuidle_governor yawn_governor = {
  */
 static int __init init_yawn(void)
 {
+	int error;
+	yawn_kobject = kobject_create_and_add("yawn", kernel_kobj);
+	error = sysfs_create_file(yawn_kobject, &yawn_attribute.attr);
+	if (error) {
+		printk("failed to create the foo file in /sys/kernel/kobject_example \n");
+	}
 	return cpuidle_register_governor(&yawn_governor);
 }
 
