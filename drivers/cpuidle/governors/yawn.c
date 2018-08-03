@@ -479,6 +479,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 //		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->cntxswch_rate, data->ttwu_rate);
 		// checking core 7 for turn off/on
 		spin_lock_irqsave(&xxx_lock, flags);
+		printk_ratelimited("cpu %d going to cr vote off %d on %d\n", dev->cpu, turn_off_votes[dev->cpu], turn_on_votes[dev->cpu]);
 		if(dev->cpu < 7 && data->in_deep_sleep && !turn_off_votes[dev->cpu])
 		{
 			printk_ratelimited("cpu %d setting my vote for turn off\n", dev->cpu);
