@@ -431,7 +431,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
 	struct timeval after;
-	unsigned int max, thresh, i;
+	unsigned int max, thresh, i, error;
 	//int value = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	do_gettimeofday(&after);
 	period = after.tv_sec * 1000000 + after.tv_usec;
@@ -468,11 +468,15 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		// checking core 7 for turn off/on
 		if(dev->cpu < 7 && data->in_deep_sleep && !atomic_read(&turn_off_votes[dev->cpu]))
 		{
+			printk_ratelimited("cpu %d setting my vote for turn off\n", dev->cpu);
 			atomic_set(&turn_off_votes[dev->cpu], 1);
 			atomic_inc(&turn_off_vote);
 			if(atomic_read(&turn_off_vote) >= 4 && atomic_read(&cpu7_status))
 			{
-				if(cpu_down(7))
+				error = cpu_down(7);
+				printk_ratelimited("cpu %d votes agrree on turn off, error = %d\n", dev->cpu, error);
+
+				if(!error)
 				{
 					atomic_set(&turn_off_vote, 0);
 					atomic_set(&cpu7_status, 0);
@@ -485,11 +489,14 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		}
 		if(dev->cpu < 7 && data->in_shallow_sleep && !atomic_read(&turn_on_votes[dev->cpu]))
 		{
+			printk_ratelimited("cpu %d setting my vote for turn on\n", dev->cpu);
 			atomic_set(&turn_on_votes[dev->cpu], 1);
 			atomic_inc(&turn_on_vote);
 			if(atomic_read(&turn_on_vote) >= 4 && !atomic_read(&cpu7_status))
 			{
-				if(cpu_up(7))
+				error = cpu_up(7);
+				printk_ratelimited("cpu %d votes agrree on turn on, error= %d\n", dev->cpu, error);
+				if(!error)
 				{
 					atomic_set(&turn_on_vote, 0);
 					atomic_set(&cpu7_status, 1);
