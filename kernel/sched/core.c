@@ -7432,7 +7432,7 @@ DECLARE_PER_CPU(cpumask_var_t, load_balance_mask);
 
 void __init sched_init(void)
 {
-	int i, j;
+	int i, j, k;
 	unsigned long alloc_size = 0, ptr;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -7565,6 +7565,9 @@ void __init sched_init(void)
 		atomic_set(&rq->nr_iowait, 0);
 		// =e
 		atomic_set(&rq->pm_enabled, 1);
+		for(k=0;k<8;k++)
+			rq->yawn_mask[k] = 1;
+
 		rq->network_req = 0;
 		//
 	}
@@ -8687,22 +8690,12 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 
 void sched_change_rq_status(int cpu, int status)
 {
-	struct rq *rq;
-	int i, flag;
-	if(status)
-	{
-		rq = cpu_rq(cpu);
-		atomic_set(&rq->pm_enabled, status);
-	}
-	else
-	{
-		for(i=num_online_cpus()-1;i >= cpu; i--)
-		{
-			rq = cpu_rq(i);
-			if(atomic_read(&rq->pm_enabled))
-				atomic_set(&rq->pm_enabled, status);
-		}
-	}
+	struct rq *rq = cpu_rq(0);
+	unsigned int flags;
+	raw_spin_lock_irqsave(&rq->lock, flags);
+	rq->yawn_mask[cpu] = status;
+	raw_spin_unlock_irqrestore(&rq->lock, flags);
+
 }
 
 void sched_set_tasks_woke()

@@ -4851,15 +4851,14 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 	int shallowest_idle_cpu = -1;
 	int i;
 	// =erfan
-	int e;
+	struct rq *main_rq = cpu_rq(0);
+	if(!main_rq->yawn_mask[this_cpu])
+		least_loaded_cpu = 0;
 	//
 	/* Traverse only the allowed CPUs */
 	for_each_cpu_and(i, sched_group_cpus(group), tsk_cpus_allowed(p)) {
 		//=erfan
-		struct rq *rq = cpu_rq(i);
-		e = atomic_read(&rq->pm_enabled);
-//		printk_ratelimited("cpu %d, %d\n", i, e);
-		if(!e)
+		if(!main_rq->yawn_mask[i])
 			continue;
 		//
 		if (idle_cpu(i)) {
@@ -4997,6 +4996,10 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int new_cpu = prev_cpu;
 	int want_affine = 0;
 	int sync = wake_flags & WF_SYNC;
+	// =er
+	struct rq *main_rq = cpu_rq(0);
+	//
+
 
 	if (sd_flag & SD_BALANCE_WAKE)
 		want_affine = !wake_wide(p) && cpumask_test_cpu(cpu, tsk_cpus_allowed(p));
@@ -5067,6 +5070,11 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 		/* while loop will break here if sd == NULL */
 	}
 	rcu_read_unlock();
+
+	// =er
+	if(!main_rq->yawn_mask[new_cpu])
+		new_cpu = 0;
+	//
 
 	return new_cpu;
 }
@@ -7316,10 +7324,11 @@ static int idle_balance(struct rq *this_rq)
 	u64 curr_cost = 0;
 
 	//=erfan
-	if(!atomic_read(&this_rq->pm_enabled))
+	struct rq *rq = cpu_rq(0);
+	if(!rq->yawn_mask[this_cpu])
 		return 0;
-	//
 
+	//
 	// =e This function does nothing at all
 	idle_enter_fair(this_rq);
 

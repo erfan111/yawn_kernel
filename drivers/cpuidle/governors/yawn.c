@@ -44,12 +44,7 @@
 // ######################## Start of Data definitions ##############################################
 
 static int cpu7_status;
-int turn_off_votes[7];
-int turn_on_votes[7];
 static struct kobject *yawn_kobject;
-
-static DEFINE_SPINLOCK(xxx_lock);
-unsigned long flags;
 
 struct yawn_device {
 	// Yawn Global Data
@@ -643,8 +638,6 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 
 	memset(data, 0, sizeof(struct yawn_device));
 	cpu7_status = 1;
-	turn_on_votes[dev->cpu] =  0;
-	turn_off_votes[dev->cpu] =  0;
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
