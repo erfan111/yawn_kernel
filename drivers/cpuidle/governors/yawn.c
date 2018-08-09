@@ -447,7 +447,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	if(data->last_state_idx < 2)
 		data->in_deep_sleep = false;
 
-	if(data->last_state_idx > 2)
+	if(data->last_state_idx > 1)
 		data->in_shallow_sleep = false;
 
 	if(period >= 500000)
