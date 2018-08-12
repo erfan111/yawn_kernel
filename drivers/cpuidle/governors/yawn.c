@@ -81,6 +81,7 @@ struct yawn_device {
 	unsigned int cntxswch_rate;
 	unsigned long epoll_events;
 	unsigned long event_rate;
+	unsigned long interarrival;
 
 	// Timer Expert Data
 	unsigned int	bucket;
@@ -444,11 +445,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 	period = after.tv_sec * 1000000 + after.tv_usec;
 	period -= 1000000 * data->before.tv_sec + data->before.tv_usec;
 
-	if(data->last_state_idx < 2)
-		data->in_deep_sleep = false;
-
-	if(data->last_state_idx > 1)
-		data->in_shallow_sleep = false;
+//	if(data->last_state_idx < 2)
+//		data->in_deep_sleep = false;
+//
+//	if(data->last_state_idx > 1)
+//		data->in_shallow_sleep = false;
 
 	if(period >= 500000)
 	{
@@ -472,32 +473,42 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		data->event_rate = epl_diff*2;
 		data->epoll_events = epoll_events;
 //		printk_ratelimited("net expert: core(%u) epoll=%lu  sched=%u ttwu=%u\n", dev->cpu, data->event_rate, data->cntxswch_rate, data->ttwu_rate);
-		// checking core 7 for turn off/on
-		if(dev->cpu != 0 && data->in_deep_sleep)
-		{
-//			printk_ratelimited("cpu %d setting my vote for turn off\n", dev->cpu);
+
+		rate_sum = data->event_rate + data->event_rate + data->cntxswch_rate;
+		//	rate_sum *=3;
+		if(rate_sum)
+			data->interarrival = div_u64(1000000, rate_sum);
+		if(dev->cpu != 0 && (!data->interarrival || data->interarrival > 10000)){
 			sched_change_rq_status(dev->cpu, 0);
 		}
-		if(dev->cpu < 7 && data->in_shallow_sleep)
+		else if(dev->cpu < 7 && data->interarrival < 100)
 		{
-//			printk_ratelimited("cpu %d setting my vote for turn on\n", dev->cpu);
 			sched_change_rq_status(dev->cpu+1, 1);
 		}
 
-		data->in_deep_sleep = true;
-		data->in_shallow_sleep = true;
+		// checking core 7 for turn off/on
+//		if(dev->cpu != 0 && data->in_deep_sleep)
+//		{
+////			printk_ratelimited("cpu %d setting my vote for turn off\n", dev->cpu);
+//			sched_change_rq_status(dev->cpu, 0);
+//		}
+//		if(dev->cpu < 7 && data->in_shallow_sleep)
+//		{
+////			printk_ratelimited("cpu %d setting my vote for turn on\n", dev->cpu);
+//			sched_change_rq_status(dev->cpu+1, 1);
+//		}
+//
+//		data->in_deep_sleep = true;
+//		data->in_shallow_sleep = true;
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->ttwu_rate);
-	rate_sum = data->event_rate + data->event_rate + data->cntxswch_rate;
-//	rate_sum *=3;
-	if(rate_sum)
-		interarrival = div_u64(1000000, rate_sum);
-	if(interarrival && interarrival < 10000){
-		if(interarrival > 400)
+
+	if(data->interarrival && data->interarrival < 10000){
+		if(data->interarrival > 400)
 			data->strict_latency = true;
 
 		data->network_activity = true;
-		return interarrival;
+		return data->interarrival;
 	}
 	yawn_reset_weights(data);
 	return -1;
