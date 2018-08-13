@@ -540,13 +540,13 @@ static ssize_t yawn_store_deep_thresh(struct kobject *kobj, struct kobj_attribut
 		data->deep_threshold = val;
 	}
 	printk("Setting Deep state threashold to %d\n", val);
-	return (ssize_t)count;
+	return count;
 }
 
 static ssize_t yawn_show_shallow_thresh(struct kobject *kobj, struct kobj_attribute *attr,
                       char *buf)
 {
-	struct yawn_device *data = &per_cpu(yawn_devices, this_cpu());
+	struct yawn_device *data = &per_cpu(yawn_devices, 0);
 	return sprintf(buf, "%d\n", data->shallow_threshold);
 }
 
@@ -561,7 +561,7 @@ static ssize_t yawn_store_shallow_thresh(struct kobject *kobj, struct kobj_attri
 		data->shallow_threshold = val;
 	}
 	printk("Setting Shalow state threashold to %d\n", val);
-	return (ssize_t)count;
+	return count;
 }
 
 
