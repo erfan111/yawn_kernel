@@ -414,11 +414,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		if(rate_sum)
 			data->interarrival = div_u64(1000000, rate_sum);
 		if(dev->cpu != 0 && (!data->interarrival || data->interarrival > data->deep_threshold)){
-			sched_change_rq_status(dev->cpu, 0);
+//			sched_change_rq_status(dev->cpu, 0);
 		}
 		else if(dev->cpu < (num_online_cpus()-1) && data->interarrival < data->shallow_threshold)
 		{
-			sched_change_rq_status(dev->cpu+1, 1);
+//			sched_change_rq_status(dev->cpu+1, 1);
 		}
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->ttwu_rate);
@@ -539,7 +539,7 @@ static ssize_t yawn_store_deep_thresh(struct kobject *kobj, struct kobj_attribut
 		struct yawn_device *data = &per_cpu(yawn_devices, i);
 		data->deep_threshold = val;
 	}
-	printk("Setting Deep state threashold to %d\n", val);
+	printk("Setting Deep state threshold to %d\n", val);
 	return count;
 }
 
@@ -560,15 +560,15 @@ static ssize_t yawn_store_shallow_thresh(struct kobject *kobj, struct kobj_attri
 		struct yawn_device *data = &per_cpu(yawn_devices, i);
 		data->shallow_threshold = val;
 	}
-	printk("Setting Shalow state threashold to %d\n", val);
+	printk("Setting Shalow state threshold to %d\n", val);
 	return count;
 }
 
 
-static struct kobj_attribute yawn_attribute1 =__ATTR(deep_threashold, 0660, yawn_show_deep_thresh,
+static struct kobj_attribute yawn_attribute1 =__ATTR(deep_threshold, 0660, yawn_show_deep_thresh,
 		yawn_store_deep_thresh);
 
-static struct kobj_attribute yawn_attribute2 =__ATTR(shallow_threashold, 0660, yawn_show_shallow_thresh,
+static struct kobj_attribute yawn_attribute2 =__ATTR(shallow_threshold, 0660, yawn_show_shallow_thresh,
 		yawn_store_shallow_thresh);
 
 // ######################## End of Sysfs definition ###########################################
