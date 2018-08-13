@@ -69,8 +69,8 @@ struct yawn_device {
 	bool network_activity;
 	int idle_counter;
 	int busy_counter;
-	bool in_deep_sleep;
-	bool in_shallow_sleep;
+	int deep_threshold;
+	int shallow_threshold;
 	// Residency Expert Data
 	unsigned int residency_moving_average;
 	// Network Expert Data
@@ -132,9 +132,8 @@ static int yawn_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct list_head *position = NULL ;
 	struct expert  *expertptr  = NULL ;
 	int state_count = drv->state_count;
-	bool go_to_deep_sleep = false;
-	// reflect the last residency into experts and yawn
 
+	// reflect the last residency into experts and yawn
 	if (data->needs_update) {
 		yawn_update(drv, dev, data);
 		data->needs_update = false;
@@ -315,52 +314,6 @@ static void yawn_update(struct cpuidle_driver *drv, struct cpuidle_device *dev, 
 			}
 		}
 	}
-
-//	if(data->last_state_idx > 2)
-//	{
-//		data->idle_counter++;
-//		data->busy_counter = 0;
-//		if(data->idle_counter >= 20 && dev->cpu)
-//			sched_change_rq_status(dev->cpu, 0);
-//	}
-//	else
-//	{
-//		data->busy_counter++;
-//		data->idle_counter = 0;
-//		if(data->busy_counter >= 20 && dev->cpu+1 != num_online_cpus())
-//			sched_change_rq_status(dev->cpu+1, 1);
-//	}
-//		if(data->last_state_idx > 2)
-//		{
-//			data->idle_counter++;
-//			data->busy_counter = 0;
-//			if(data->idle_counter >= 100 && dev->cpu != 7)
-//			{
-//				the_flag[dev->cpu] = 0;
-//				cpu_down(7);
-//			}
-//
-//		}
-//		else
-//		{
-//			data->busy_counter++;
-//			data->idle_counter = 0;
-//			if(data->busy_counter >= 100 && dev->cpu != 7)
-//			{
-//				int i, up = true;
-//				the_flag[dev->cpu] = 1;
-//				for(i=0;i<7;i++)
-//				{
-//					if(the_flag[i] == 0)
-//						up = false;
-//					break;
-//				}
-//				if(up)
-//					cpu_up(7);
-//			}
-//		}
-
-
 	for(i = 0 ;i < ACTIVE_EXPERTS; i++)
 		data->former_predictions[i] = data->predictions[i];
 
@@ -424,32 +377,15 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 	data->last_ttwu_counter = sched_get_nr_ttwu(dev->cpu);
 }
 
-int vote_sum(int *list)
-{
-	int sum = 0, i;
-	for(i=0;i<7;i++)
-	{
-		if(list[i])
-			sum++;
-	}
-	return sum;
-}
-
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
 	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
 	struct timeval after;
-	unsigned int max, thresh, i, error;
+	unsigned int max, thresh;
 	//int value = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
 	do_gettimeofday(&after);
 	period = after.tv_sec * 1000000 + after.tv_usec;
 	period -= 1000000 * data->before.tv_sec + data->before.tv_usec;
-
-//	if(data->last_state_idx < 2)
-//		data->in_deep_sleep = false;
-//
-//	if(data->last_state_idx > 1)
-//		data->in_shallow_sleep = false;
 
 	if(period >= 500000)
 	{
@@ -478,32 +414,17 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		//	rate_sum *=3;
 		if(rate_sum)
 			data->interarrival = div_u64(1000000, rate_sum);
-		if(dev->cpu != 0 && (!data->interarrival || data->interarrival > 10000)){
+		if(dev->cpu != 0 && (!data->interarrival || data->interarrival > data->deep_threshold)){
 			sched_change_rq_status(dev->cpu, 0);
 		}
-		else if(dev->cpu < 7 && data->interarrival < 20)
+		else if(dev->cpu < (num_online_cpus()-1) && data->interarrival < data->shallow_threshold)
 		{
 			sched_change_rq_status(dev->cpu+1, 1);
 		}
-
-		// checking core 7 for turn off/on
-//		if(dev->cpu != 0 && data->in_deep_sleep)
-//		{
-////			printk_ratelimited("cpu %d setting my vote for turn off\n", dev->cpu);
-//			sched_change_rq_status(dev->cpu, 0);
-//		}
-//		if(dev->cpu < 7 && data->in_shallow_sleep)
-//		{
-////			printk_ratelimited("cpu %d setting my vote for turn on\n", dev->cpu);
-//			sched_change_rq_status(dev->cpu+1, 1);
-//		}
-//
-//		data->in_deep_sleep = true;
-//		data->in_shallow_sleep = true;
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->ttwu_rate);
 
-	if(data->interarrival && data->interarrival < 10000){
+	if(data->interarrival && data->interarrival < data->deep_threshold){
 		if(data->interarrival > 400)
 			data->strict_latency = true;
 
@@ -602,21 +523,54 @@ struct expert timer_expert = {
 // ######################## Start of Sysfs definition ###########################################
 
 
-static ssize_t yawn_show(struct kobject *kobj, struct kobj_attribute *attr,
+static ssize_t yawn_show_deep_thresh(struct kobject *kobj, struct kobj_attribute *attr,
                       char *buf)
 {
-        return sprintf(buf, "%d\n", cpu7_status);
+	struct yawn_device *data = &per_cpu(yawn_devices, this_cpu());
+	return sprintf(buf, "%d\n", data->deep_threshold);
 }
 
-static ssize_t yawn_store(struct kobject *kobj, struct kobj_attribute *attr,
+static ssize_t yawn_store_deep_thresh(struct kobject *kobj, struct kobj_attribute *attr,
                       char *buf, size_t count)
 {
-        return -1;
+	int i, val;
+	sscanf(buf, "%du", &val);
+	for(i=0; i < num_online_cpus();i++)
+	{
+		struct yawn_device *data = &per_cpu(yawn_devices, i);
+		data->deep_threshold = val;
+	}
+	printk("Setting Deep state threashold to %d\n", val);
+	return count;
+}
+
+static ssize_t yawn_show_shallow_thresh(struct kobject *kobj, struct kobj_attribute *attr,
+                      char *buf)
+{
+	struct yawn_device *data = &per_cpu(yawn_devices, this_cpu());
+	return sprintf(buf, "%d\n", data->shallow_threshold);
+}
+
+static ssize_t yawn_store_shallow_thresh(struct kobject *kobj, struct kobj_attribute *attr,
+                      char *buf, size_t count)
+{
+	int i, val;
+	sscanf(buf, "%du", &val);
+	for(i=0; i < num_online_cpus();i++)
+	{
+		struct yawn_device *data = &per_cpu(yawn_devices, i);
+		data->shallow_threshold = val;
+	}
+	printk("Setting Shalow state threashold to %d\n", val);
+	return count;
 }
 
 
-static struct kobj_attribute yawn_attribute =__ATTR(cpu7_status, 0660, yawn_show,
-                                                   yawn_store);
+static struct kobj_attribute yawn_attribute1 =__ATTR(deep_threashold, 0660, yawn_show_deep_thresh,
+		yawn_store_deep_thresh);
+
+static struct kobj_attribute yawn_attribute2 =__ATTR(shallow_threashold, 0660, yawn_show_shallow_thresh,
+		yawn_store_shallow_thresh);
 
 // ######################## End of Sysfs definition ###########################################
 // ######################## Start of Yawn initialization ###########################################
@@ -632,13 +586,14 @@ static int yawn_enable_device(struct cpuidle_driver *drv,
 	struct yawn_device *data = &per_cpu(yawn_devices, dev->cpu);
 
 	memset(data, 0, sizeof(struct yawn_device));
-	cpu7_status = 1;
 	INIT_LIST_HEAD(&expert_list);
 	register_expert(&residency_expert, data);
 	register_expert(&network_expert, data);
 	//register_expert(&timer_expert, data);
 	hrtimer_init( &data->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	data->hr_timer.function = &my_hrtimer_callback;
+	data->deep_threshold = 10000;
+	data->shallow_threshold = 50;
 	return 0;
 }
 
@@ -658,9 +613,13 @@ static int __init init_yawn(void)
 {
 	int error;
 	yawn_kobject = kobject_create_and_add("yawn", kernel_kobj);
-	error = sysfs_create_file(yawn_kobject, &yawn_attribute.attr);
+	error = sysfs_create_file(yawn_kobject, &yawn_attribute1.attr);
 	if (error) {
-		printk("failed to create the foo file in /sys/kernel/kobject_example \n");
+		printk("failed to create the file in /sys/kernel/yawn/deep \n");
+	}
+	error = sysfs_create_file(yawn_kobject, &yawn_attribute2.attr);
+	if (error) {
+		printk("failed to create the file in /sys/kernel/yawn/shallow \n");
 	}
 	return cpuidle_register_governor(&yawn_governor);
 }
