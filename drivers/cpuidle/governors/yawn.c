@@ -481,7 +481,7 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		if(dev->cpu != 0 && (!data->interarrival || data->interarrival > 10000)){
 			sched_change_rq_status(dev->cpu, 0);
 		}
-		else if(dev->cpu < 7 && data->interarrival < 50)
+		else if(dev->cpu < 7 && data->interarrival < 20)
 		{
 			sched_change_rq_status(dev->cpu+1, 1);
 		}
