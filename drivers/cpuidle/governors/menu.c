@@ -463,7 +463,7 @@ static int menu_enable_device(struct cpuidle_driver *drv,
 	int i;
 
 	memset(data, 0, sizeof(struct menu_device));
-
+	sched_change_rq_status(dev->cpu, 1);
 	/*
 	 * if the correction factor is 0 (eg first time init or cpu hotplug
 	 * etc), we actually want to start out with a unity factor.

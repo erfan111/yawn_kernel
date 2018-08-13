@@ -414,11 +414,11 @@ int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 		if(rate_sum)
 			data->interarrival = div_u64(1000000, rate_sum);
 		if(dev->cpu != 0 && (!data->interarrival || data->interarrival > data->deep_threshold)){
-//			sched_change_rq_status(dev->cpu, 0);
+			sched_change_rq_status(dev->cpu, 0);
 		}
 		else if(dev->cpu < (num_online_cpus()-1) && data->interarrival < data->shallow_threshold)
 		{
-//			sched_change_rq_status(dev->cpu+1, 1);
+			sched_change_rq_status(dev->cpu+1, 1);
 		}
 	}
 //	printk_ratelimited("rate_sum = %lu   event = %lu   ttwu = %u \n", rate_sum, data->event_rate, data->ttwu_rate);
