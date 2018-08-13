@@ -43,7 +43,6 @@
 
 // ######################## Start of Data definitions ##############################################
 
-static int cpu7_status;
 static struct kobject *yawn_kobject;
 
 struct yawn_device {
@@ -379,7 +378,7 @@ void network_expert_init(struct yawn_device *data, struct cpuidle_device *dev)
 
 int network_expert_select(struct yawn_device *data, struct cpuidle_device *dev)
 {
-	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum, interarrival = 0;
+	unsigned long ttwups, period, difference, epoll_events, epl_diff, rate_sum;
 	struct timeval after;
 	unsigned int max, thresh;
 	//int value = pm_qos_request(PM_QOS_NETWORK_THROUGHPUT);
@@ -526,7 +525,7 @@ struct expert timer_expert = {
 static ssize_t yawn_show_deep_thresh(struct kobject *kobj, struct kobj_attribute *attr,
                       char *buf)
 {
-	struct yawn_device *data = &per_cpu(yawn_devices, this_cpu());
+	struct yawn_device *data = &per_cpu(yawn_devices, 0);
 	return sprintf(buf, "%d\n", data->deep_threshold);
 }
 
@@ -541,7 +540,7 @@ static ssize_t yawn_store_deep_thresh(struct kobject *kobj, struct kobj_attribut
 		data->deep_threshold = val;
 	}
 	printk("Setting Deep state threashold to %d\n", val);
-	return count;
+	return (ssize_t)count;
 }
 
 static ssize_t yawn_show_shallow_thresh(struct kobject *kobj, struct kobj_attribute *attr,
@@ -562,7 +561,7 @@ static ssize_t yawn_store_shallow_thresh(struct kobject *kobj, struct kobj_attri
 		data->shallow_threshold = val;
 	}
 	printk("Setting Shalow state threashold to %d\n", val);
-	return count;
+	return (ssize_t)count;
 }
 
 
