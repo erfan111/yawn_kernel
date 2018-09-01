@@ -627,7 +627,7 @@ struct rq {
 	unsigned int ywn_tasks_woke;
 	unsigned int network_req;
 	unsigned long epoll_events;
-	int yawn_mask[8];
+	int yawn_mask[48];
 	//
 
 #ifdef CONFIG_SMP
