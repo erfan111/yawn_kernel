@@ -1,3 +1,11 @@
+The Linux kernel source containing Yawn idle-state governor.
+
+Yawn is a CPU idle-state governor that tries to mitigate the tail latency imposed by
+exiting from deep idle-states in low request rates.
+
+Compile and run the kernel normally and switch between the available governors using sysfs interfaces.
+Yawn is the default idle-state governor.
+
         Linux kernel release 4.x <http://kernel.org/>
 
 These are the release notes for Linux version 4.  Read them carefully,
